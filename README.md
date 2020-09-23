@@ -18,3 +18,6 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 ### What is untested?
 1. Virtual functions and overrides
 2. Abstract classes
+
+### How to use this?
+You have to hook the functions declared in `rtoslink.d` by implementing them in your MCU development environment. For example, with FreeRTOS, `rtosbackend_heapalloc` points to a wrapper in the C/C++ land that wraps `pvPortMalloc(...)`.
