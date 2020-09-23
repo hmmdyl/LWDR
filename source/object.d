@@ -264,7 +264,7 @@ class TypeInfo_Class : TypeInfo {
 	ubyte[] m_init; /// class static initializer (length gives class size)
 	string name; /// name of class
 	void*[] vtbl; // virtual function pointer table
-	void*[] interfaces;
+	Interface[] interfaces;
 	TypeInfo_Class base;
 	void* destructor;
 	void function(Object) classInvariant;
