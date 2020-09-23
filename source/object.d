@@ -3,8 +3,25 @@ module object;
 import util;
 import rtoslink;
 
-alias string = immutable(char)[];
-alias size_t = uint;
+version (D_LP64)
+{
+    alias size_t = ulong;
+    alias ptrdiff_t = long;
+}
+else
+{
+    alias size_t = uint;
+    alias ptrdiff_t = int;
+}
+
+alias sizediff_t = ptrdiff_t; //For backwards compatibility only.
+
+alias hash_t = size_t; //For backwards compatibility only.
+alias equals_t = bool; //For backwards compatibility only.
+
+alias string  = immutable(char)[];
+alias wstring = immutable(wchar)[];
+alias dstring = immutable(dchar)[];
 
 extern(C) void _d_assert(string f, uint l) { rtosbackend_assert(f, l); }
 extern(C) void _d_assert_msg(string msg, string f, uint l) { rtosbackend_assertmsg(msg, f, l); }
@@ -24,7 +41,7 @@ class Object
 		return addr ^ (addr >>> 4);
 	}
 	
-	int opCmp(Object o) { return 0; }
+	int opCmp(Object o) { assert(false, "not implemented"); return 0; }
 	bool opEquals(Object o) { return this is o; }
 }
 
@@ -63,15 +80,19 @@ bool opEquals(const Object lhs, const Object rhs)
 
 struct Interface
 {
-	TypeInfo_Class classinfo;
-	void*[] vtbl;
-	size_t offset;
+    TypeInfo_Class   classinfo;  /// .classinfo for this interface (not for containing class)
+    void*[]     vtbl;
+    size_t      offset;     /// offset to Interface 'this' from Object 'this'
 }
 
+/**
+ * Array of pairs giving the offset and type information for each
+ * member in an aggregate.
+ */
 struct OffsetTypeInfo
 {
-	size_t offset;
-	TypeInfo ti;
+    size_t   offset;    /// Offset of member from start of object
+    TypeInfo ti;        /// TypeInfo for this member
 }
 //enum immutable(void)* rtinfoHasPointers = cast(void*)1;
 
@@ -148,6 +169,8 @@ class TypeInfo_Array : TypeInfo {
 	TypeInfo value;
 }
 
+class TypeInfo_Ai : TypeInfo_Array {}
+
 class TypeInfo_StaticArray : TypeInfo { 
 	TypeInfo value;
 	size_t len;
@@ -155,6 +178,10 @@ class TypeInfo_StaticArray : TypeInfo {
 
 class TypeInfo_AssociativeArray : TypeInfo {
 	TypeInfo value, key;
+}
+
+class TypeInfo_Vector : TypeInfo {
+TypeInfo base;
 }
 
 class TypeInfo_Function : TypeInfo {
@@ -226,6 +253,11 @@ class TypeInfo_Interface : TypeInfo
     override @property uint flags() nothrow pure const { return 1; }+/
 }
 
+class TypeInfo_Tuple : TypeInfo
+{
+    TypeInfo[] elements;
+}
+
 class TypeInfo_Class : TypeInfo {
 	//override string toString() const { return name; }
 
@@ -270,6 +302,10 @@ class TypeInfo_Struct : TypeInfo {
 	uint align_;
 	immutable(void)* rtinfo;
 }
+
+class TypeInfo_Invariant : TypeInfo_Const {}
+class TypeInfo_Shared : TypeInfo_Const {}
+class TypeInfo_Inout : TypeInfo_Const {}
 
 bool __equals(T1, T2)(scope const T1[] lhs, scope const T2[] rhs)
 @nogc nothrow pure @trusted
