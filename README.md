@@ -21,3 +21,6 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 
 ### How to use this?
 You have to hook the functions declared in `rtoslink.d` by implementing them in your MCU development environment. For example, with FreeRTOS, `rtosbackend_heapalloc` points to a wrapper in the C/C++ land that wraps `pvPortMalloc(...)`.
+
+### Credit
+Credit to [Adam D. Ruppe](https://github.com/adamdruppe) for his [webassembly](https://github.com/adamdruppe/webassembly) project that forms the basis of this project.
