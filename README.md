@@ -13,7 +13,10 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 
 ### What doesn't work?
 1. Interfaces
+2. Arrays
 
+### Has this been run on real hardware?
+Yes, as of currently it has been run on an STM32F407.
 
 ### What is untested?
 1. Virtual functions and overrides
