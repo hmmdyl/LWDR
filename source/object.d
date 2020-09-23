@@ -278,12 +278,7 @@ alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Const : TypeInfo {
 	size_t getHash(scope const void*) const nothrow { return 0; }
-	/* Fixes error:
-	 Error: TypeInfo_Const: mismatch between compiler (12 bytes) 
-	 and object.d or object.di (8 bytes) found. Check 
-	 installation and import paths with -v compiler switch.
-	 */
-	void* p; 
+	TypeInfo base; 
 }
 
 class TypeInfo_Struct : TypeInfo {
