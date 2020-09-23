@@ -10,10 +10,14 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 4. Asserts
 5. Contract programming
 6. Basic RTTI (via `TypeInfo` stubs)
+7. Interfaces
 
 ### What doesn't work?
-1. Interfaces
-2. Arrays
+1. Arrays
+2. Static arrays?
+3. Module constructors and destructors
+4. ModuleInfo
+5. Exceptions, Throwables
 
 ### Has this been run on real hardware?
 Yes, as of currently it has been run on an STM32F407.
@@ -21,6 +25,7 @@ Yes, as of currently it has been run on an STM32F407.
 ### What is untested?
 1. Virtual functions and overrides
 2. Abstract classes
+3. Static classes
 
 ### How to use this?
 You have to hook the functions declared in `rtoslink.d` by implementing them in your MCU development environment. For example, with FreeRTOS, `rtosbackend_heapalloc` points to a wrapper in the C/C++ land that wraps `pvPortMalloc(...)`.
