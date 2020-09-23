@@ -61,7 +61,7 @@ bool opEquals(const Object lhs, const Object rhs)
     return opEquals(cast()lhs, cast()rhs);
 }
 
-/+struct Interface
+struct Interface
 {
 	TypeInfo_Class classinfo;
 	void*[] vtbl;
@@ -72,7 +72,7 @@ struct OffsetTypeInfo
 {
 	size_t offset;
 	TypeInfo ti;
-}+/
+}
 //enum immutable(void)* rtinfoHasPointers = cast(void*)1;
 
 class TypeInfo 
@@ -246,6 +246,12 @@ alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Const : TypeInfo {
 	size_t getHash(scope const void*) const nothrow { return 0; }
+	/* Fixes error:
+	 Error: TypeInfo_Const: mismatch between compiler (12 bytes) 
+	 and object.d or object.di (8 bytes) found. Check 
+	 installation and import paths with -v compiler switch.
+	 */
+	void* p; 
 }
 
 class TypeInfo_Struct : TypeInfo {
