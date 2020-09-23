@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Dylan Graham"
+	],
+	"description": "LightWeight D Runtime targetting ARM Cortex CPU/MCUs",
+	"license": "FOSS",
+	"name": "lwdr",
+	"targetType": "sourceLibrary"
+}

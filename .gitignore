@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/lwdr
+lwdr.so
+lwdr.dylib
+lwdr.dll
+lwdr.a
+lwdr.lib
+lwdr-test-*
+*.exe
+*.o
+*.obj
+*.lst
