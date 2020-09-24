@@ -2,6 +2,7 @@ module object;
 
 import util;
 import rtoslink;
+import memory;
 
 version (D_LP64)
 {
@@ -301,6 +302,124 @@ class TypeInfo_Struct : TypeInfo {
 class TypeInfo_Invariant : TypeInfo_Const {}
 class TypeInfo_Shared : TypeInfo_Const {}
 class TypeInfo_Inout : TypeInfo_Const {}
+
+class Throwable : Object 
+{
+	interface TraceInfo
+	{
+		int opApply(scope int delegate(ref const(char[]))) const;
+		int opApply(scope int delegate(ref size_t, ref const(char[]))) const;
+		string toString() const;
+	}
+	
+	string msg;
+	string file;
+	size_t line;
+	TraceInfo info;
+	
+	private Throwable nextInChain;
+	
+	private uint _refcount;
+	
+	@property inout(Throwable) next() @safe inout return scope pure nothrow @nogc { return nextInChain; }
+	@property void next(Throwable tail) @safe scope nothrow @nogc
+    {
+        if (tail && tail._refcount)
+            ++tail._refcount;           // increment the replacement *first*
+
+        auto n = nextInChain;
+        nextInChain = null;             // sever the tail before deleting it
+
+        if (n && n._refcount)
+            _d_delThrowable(n);         // now delete the old tail
+
+        nextInChain = tail;             // and set the new tail
+    }
+	 @system @nogc final pure nothrow ref uint refcount() return { return _refcount; }
+	 int opApply(scope int delegate(Throwable) dg)
+    {
+        int result = 0;
+        for (Throwable t = this; t; t = t.nextInChain)
+        {
+            result = dg(t);
+            if (result)
+                break;
+        }
+        return result;
+    }
+	static @__future @system @nogc pure nothrow Throwable chainTogether(return scope Throwable e1, return scope Throwable e2)
+    {
+        if (!e1)
+            return e2;
+        if (!e2)
+            return e1;
+        if (e2.refcount())
+            ++e2.refcount();
+
+        for (auto e = e1; 1; e = e.nextInChain)
+        {
+            if (!e.nextInChain)
+            {
+                e.nextInChain = e2;
+                break;
+            }
+        }
+        return e1;
+    }
+	@nogc @safe pure nothrow this(string msg, Throwable nextInChain = null)
+    {
+        this.msg = msg;
+        this.nextInChain = nextInChain;
+        //this.info = _d_traceContext();
+    }
+	@nogc @safe pure nothrow this(string msg, string file, size_t line, Throwable nextInChain = null)
+    {
+        this(msg, nextInChain);
+        this.file = file;
+        this.line = line;
+        //this.info = _d_traceContext();
+    }
+	@trusted nothrow ~this()
+    {
+        if (nextInChain && nextInChain._refcount)
+            _d_delThrowable(nextInChain);
+    }
+	
+	@__future const(char)[] message() const
+    {
+        return this.msg;
+    }
+}
+
+class Exception : Throwable
+{
+    @nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+    {
+        super(msg, file, line, nextInChain);
+    }
+
+    @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, nextInChain);
+    }
+}
+
+class Error : Throwable
+{
+    @nogc @safe pure nothrow this(string msg, Throwable nextInChain = null)
+    {
+        super(msg, nextInChain);
+        bypassedException = null;
+    }
+
+    @nogc @safe pure nothrow this(string msg, string file, size_t line, Throwable nextInChain = null)
+    {
+        super(msg, file, line, nextInChain);
+        bypassedException = null;
+    }
+	
+    Throwable bypassedException;
+}
 
 bool __equals(T1, T2)(scope const T1[] lhs, scope const T2[] rhs)
 @nogc nothrow pure @trusted
