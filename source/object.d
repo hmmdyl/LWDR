@@ -44,6 +44,8 @@ class Object
 	
 	int opCmp(Object o) { assert(false, "not implemented"); return 0; }
 	bool opEquals(Object o) { return this is o; }
+	
+	static Object factory(string classname) { return null; }
 }
 
 bool opEquals(Object lhs, Object rhs)
@@ -192,6 +194,10 @@ class TypeInfo_Function : TypeInfo {
 class TypeInfo_Delegate : TypeInfo {
 	string deco; 
 }
+
+//class TypeInfo_v : TypeInfo { const: nothrow: pure: @trusted: }
+class TypeInfo_Aya : TypeInfo { const: nothrow: pure: @trusted: }
+class TypeInfo_h : TypeInfo { const: nothrow: pure: @trusted: }
 
 class TypeInfo_Interface : TypeInfo 
 {
@@ -433,3 +439,30 @@ if (__traits(isScalar, T1) && __traits(isScalar, T2))
             return false;
     return true;
 }
+
+// Used in Exception Handling LSDA tables to 'wrap' C++ type info
+// so it can be distinguished from D TypeInfo
+class __cpp_type_info_ptr
+{
+    void* ptr;          // opaque pointer to C++ RTTI type info
+}
+
+extern(D) void _d_invariant(Object o)
+{
+}
+
+extern (C) int _adEq2(void[] a1, void[] a2, TypeInfo ti)
+{
+    return 0;
+}
+
+extern (C) @trusted nothrow:
+
+byte[] _d_arraycopy(size_t size, byte[] from, byte[] to)
+{
+    return null;
+}
+
+class TypeInfo_i : TypeInfo {}
+class TypeInfo_v : TypeInfo {}
+class TypeInfo_k : TypeInfo {}
