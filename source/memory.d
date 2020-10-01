@@ -29,9 +29,10 @@ nothrow extern(C) void _d_delThrowable(Throwable t) @trusted @nogc
 {
 	if(t is null) return;
 	
-	auto refcount = t.refcount();
+	/+auto refcount = t.refcount();
 	t.refcount() = --refcount;
-	if(refcount > 1) return;
+	if(refcount > 1) return;+/
+    t.refcount = t.refcount - 1;
 	
 	rt_finalize(cast(void*)t);
 	rtosbackend_heapfreealloc(cast(void*)t);
