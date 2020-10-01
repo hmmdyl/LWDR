@@ -11,13 +11,15 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 5. Contract programming
 6. Basic RTTI (via `TypeInfo` stubs)
 7. Interfaces
+8. Static Arrays
+
+### What is in progress?
+1. Exceptions and Throwables (so far are currently working)
 
 ### What doesn't work?
 1. Arrays
-2. Static arrays?
-3. Module constructors and destructors
-4. ModuleInfo
-5. Exceptions, Throwables
+2. Module constructors and destructors
+3. ModuleInfo
 
 ### Has this been run on real hardware?
 Yes, as of currently it has been run on an STM32F407.
