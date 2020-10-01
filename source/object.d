@@ -101,122 +101,103 @@ struct OffsetTypeInfo
 
 class TypeInfo 
 {
-	/+size_t getHash(scope const void* p) @trusted nothrow const { return 0; }
 	bool equals(in void* p1, in void* p2) const { return p1 == p2; }
-	int compare(in void* p1, in void* p2) const { return 0; }
-	@property size_t tsize() nothrow pure const @safe @nogc { return 0; }
-	void swap(void* p1, void* p2) const {}
-	@property inout(TypeInfo) next() nothrow pure inout @nogc { return null; }
-	
-	version(LDC)
-	{
-		const(void)[] initializer() nothrow pure const @trusted @nogc
-		{
-			return (cast(const(void)*) null)[0 .. typeof(null).sizeof];
-		}
-	}
-	else
-	{
-		abstract const(void)[] initializer() nothrow pure const @safe @nogc;
-	}
 
-	@property uint flags() nothrow pure const @safe @nogc { return 0; }
-	const(OffsetTypeInfo)[] offTi() const { return null; }
-	void destroy(void* p) const {}
-	void postblit(void* p) const {}
-	
-	@property size_t talign() nothrow pure const @safe @nogc { return tsize; }
-	@property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } +/
+    @property size_t tsize() nothrow pure const @safe @nogc { return 0; }
 }
 
-class TypeInfo_Enum : TypeInfo {
+class TypeInfo_Enum : TypeInfo 
+{
 	TypeInfo base;
 	string name;
 	void[] m_init; 
 	
-	/+override string toString() const { return name; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Enum)o;
-        return c && this.name == c.name &&
-                    this.base == c.base;
-    }
-
-    override size_t getHash(scope const void* p) const { return base.getHash(p); }
-    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
-    override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
+	override bool equals(in void* p1, in void* p2) const
+	{ return base.equals(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
-    override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
-
-    override @property inout(TypeInfo) next() nothrow pure inout { return base.next; }
-    override @property uint flags() nothrow pure const { return base.flags; }
-
-    override const(void)[] initializer() const
-    {
-        return m_init.length ? m_init : base.initializer();
-    }
-
-    override @property size_t talign() nothrow pure const { return base.talign; }
-	override @property immutable(void)* rtInfo() const { return base.rtInfo; }+/
 }
 
 class TypeInfo_Pointer : TypeInfo 
 { 
-TypeInfo m_next; 
+    TypeInfo m_next; 
+
+    override bool equals(in void* p1, in void* p2) const
+	{ return *cast(void**)p1 == *cast(void**)p2; }
+    override @property size_t tsize() nothrow pure const { return (void*).sizeof; }
 }
 
-class TypeInfo_Array : TypeInfo {
+class TypeInfo_Array : TypeInfo 
+{
 	TypeInfo value;
+
+    override bool equals(in void* p1, in void* p2) const
+	{
+        void[] a1 = *cast(void[]*)p1;
+        void[] a2 = *cast(void[]*)p2;
+        if(a1.length != a2.length) return false;
+        immutable sz = value.tsize;
+        foreach(size_t i; 0 .. a1.length)
+            if(!value.equals(a1.ptr + i * sz, a2.ptr + i * sz))
+                return false;
+        return true;
+	}
 }
 
 class TypeInfo_Ai : TypeInfo_Array {}
 
-class TypeInfo_StaticArray : TypeInfo { 
+class TypeInfo_StaticArray : TypeInfo 
+{ 
 	TypeInfo value;
 	size_t len;
+
+	override bool equals(in void* p1, in void* p2) const
+    {
+        size_t sz = value.tsize;
+
+        for (size_t u = 0; u < len; u++)
+            if (!value.equals(p1 + u * sz, p2 + u * sz))
+                return false;
+        return true;
+    }
+
+    override @property size_t tsize() nothrow pure const
+    { return len * value.tsize; }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo {
 	TypeInfo value, key;
 }
 
-class TypeInfo_Vector : TypeInfo {
-TypeInfo base;
+class TypeInfo_Vector : TypeInfo 
+{
+    TypeInfo base;
+
+    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
 }
 
-class TypeInfo_Function : TypeInfo {
+class TypeInfo_Function : TypeInfo 
+{
 	string deco;
 }
 
-class TypeInfo_Delegate : TypeInfo {
+class TypeInfo_Delegate : TypeInfo 
+{
 	string deco; 
+
+    override bool equals(in void* p1, in void* p2) const
+    {
+        auto dg1 = *cast(void delegate()*)p1;
+        auto dg2 = *cast(void delegate()*)p2;
+        return dg1 == dg2;
+    }
 }
 
 //class TypeInfo_v : TypeInfo { const: nothrow: pure: @trusted: }
-class TypeInfo_Aya : TypeInfo { const: nothrow: pure: @trusted: }
-class TypeInfo_h : TypeInfo { const: nothrow: pure: @trusted: }
 
 class TypeInfo_Interface : TypeInfo 
 {
 	TypeInfo_Class info;
 	
-	/+override string toString() const { return info.name; }
-	override bool opEquals(Object o)
-	{
-		if(this is o) return true;
-		auto c = cast(const TypeInfo_Interface)o;
-		return c && this.info.name == typeid(c).name;
-	}
-	override size_t getHash(scope const void* p) @trusted const
-	{
-		if(!*cast(void**)p) return 0;
-		Interface* pi = **cast(Interface ***)*cast(void**)p;
-		Object o = cast(Object)(*cast(void**)p - pi.offset);
-		return o.toHash();
-	}
 	override bool equals(in void* p1, in void* p2) const
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p1;
@@ -226,48 +207,31 @@ class TypeInfo_Interface : TypeInfo
 
         return o1 == o2 || (o1 && o1.opCmp(o2) == 0);
     }
-    override int compare(in void* p1, in void* p2) const
-    {
-        Interface* pi = **cast(Interface ***)*cast(void**)p1;
-        Object o1 = cast(Object)(*cast(void**)p1 - pi.offset);
-        pi = **cast(Interface ***)*cast(void**)p2;
-        Object o2 = cast(Object)(*cast(void**)p2 - pi.offset);
-        int c = 0;
-
-        // Regard null references as always being "less than"
-        if (o1 != o2)
-        {
-            if (o1)
-            {
-                if (!o2)
-                    c = 1;
-                else
-                    c = o1.opCmp(o2);
-            }
-            else
-                c = -1;
-        }
-        return c;
-    }
-    override @property size_t tsize() nothrow pure const
-    {
-        return Object.sizeof;
-    }
-    override const(void)[] initializer() const @trusted
-    {
-        return (cast(void *)null)[0 .. Object.sizeof];
-    }
-    override @property uint flags() nothrow pure const { return 1; }+/
 }
 
 class TypeInfo_Tuple : TypeInfo
 {
     TypeInfo[] elements;
+
+	override bool opEquals(Object o)
+    {
+        if (this is o)
+            return true;
+
+        auto t = cast(const TypeInfo_Tuple)o;
+        if (t && elements.length == t.elements.length)
+        {
+            for (size_t i = 0; i < elements.length; i++)
+                if (elements[i] != t.elements[i])
+                    return false;
+            return true;
+        }
+        return false;
+    }
 }
 
-class TypeInfo_Class : TypeInfo {
-	//override string toString() const { return name; }
-
+class TypeInfo_Class : TypeInfo 
+{
 	ubyte[] m_init; /// class static initializer (length gives class size)
 	string name; /// name of class
 	void*[] vtbl; // virtual function pointer table
@@ -280,12 +244,22 @@ class TypeInfo_Class : TypeInfo {
 	void*[] m_offTi;
 	void function(Object) defaultConstructor;
 	immutable(void)* rtInfo;
+
+	override bool equals(in void* p1, in void* p2) const
+    {
+        Object o1 = *cast(Object*)p1;
+        Object o2 = *cast(Object*)p2;
+
+        return (o1 is o2) || (o1 && o1.opEquals(o2));
+    }
 }
 alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Const : TypeInfo {
 	size_t getHash(scope const void*) const nothrow { return 0; }
 	TypeInfo base; 
+
+    override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
 }
 
 class TypeInfo_Struct : TypeInfo {
@@ -303,6 +277,26 @@ class TypeInfo_Struct : TypeInfo {
 	void function(void*) postblit;
 	uint align_;
 	immutable(void)* rtinfo;
+
+    override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
+    {
+        if (!p1 || !p2)
+            return false;
+        else if (xopequals)
+            return (*cast(bool function(in void*, in void*) pure nothrow @safe *)xopequals)(p1, p2);
+        else if (p1 == p2)
+            return true;
+        else
+		{
+            immutable len = m_init.length;
+            auto p1B = cast(ubyte[])p1[0..len];
+            auto p2B = cast(ubyte[])p2[0..len];
+            foreach(i; 0 .. len)
+			    if(p1B[i] != p2B[i]) 
+                    return false;
+            return true;
+		}
+    }
 }
 
 class TypeInfo_Invariant : TypeInfo_Const {}
@@ -447,22 +441,8 @@ class __cpp_type_info_ptr
     void* ptr;          // opaque pointer to C++ RTTI type info
 }
 
-extern(D) void _d_invariant(Object o)
-{
-}
-
-extern (C) int _adEq2(void[] a1, void[] a2, TypeInfo ti)
-{
-    return 0;
-}
-
-extern (C) @trusted nothrow:
-
-byte[] _d_arraycopy(size_t size, byte[] from, byte[] to)
-{
-    return null;
-}
-
 class TypeInfo_i : TypeInfo {}
 class TypeInfo_v : TypeInfo {}
 class TypeInfo_k : TypeInfo {}
+class TypeInfo_Aya : TypeInfo { const: nothrow: pure: @trusted: }
+class TypeInfo_h : TypeInfo { const: nothrow: pure: @trusted: }
