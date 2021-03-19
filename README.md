@@ -42,7 +42,8 @@ This will output a lib archive that you can link into your C/C++ project and exe
 
 Here is an example code using FreeRTOS:
 
-`//myapp.d
+```d
+//myapp.d
 module myapp;
 class Foo 
 {
@@ -63,9 +64,10 @@ extern(C) void myDFunction()
   foo.bar;
   delete foo; // don't forget to delete - there is no GC
   // delete will invoke rtosbackend_heapfreealloc(..)
-}`
+}```
 
-` // main.h
+```c++
+// main.h
 #ifndef __MAIN_H
 #define __MAIN_H
 
@@ -87,9 +89,10 @@ void myDFunction(); // defined in myapp.d
 #endif
 
 #endif __MAIN_H
-`
+```
 
-` // main.cpp
+```c++
+// main.cpp
 #include "cmsis_os.h"
 
 void* rtosbackend_heapalloc(unsigned int sz) // defined in rtoslink.d
@@ -129,7 +132,8 @@ int main()
   while(1) {}
   
   return 1;
-}`
+}
+```
 
 GDB will be able to set breakpoints in D code and perform steps normally.
 
