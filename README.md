@@ -14,20 +14,25 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 8. Static Arrays
 
 ### What is in progress?
-1. Exceptions and Throwables (so far are currently working)
+9. Exceptions and Throwables (so far are currently working)
 
 ### What doesn't work?
-1. Arrays
-2. Module constructors and destructors
-3. ModuleInfo
+10. Arrays
+11. Module constructors and destructors
+12. ModuleInfo
+
+### What is untested?
+13. Virtual functions and overrides
+14. Abstract classes
+15. Static classes
+
+### Which compilers can be used?
+GDC works the best. 
+LDC can only be used for points 1-8. Exception handling does not work on LDC.
+DMD is not compatible.
 
 ### Has this been run on real hardware?
 Yes, as of currently it has been run on an STM32F407.
-
-### What is untested?
-1. Virtual functions and overrides
-2. Abstract classes
-3. Static classes
 
 ### How to use this?
 You have to hook the functions declared in `rtoslink.d` by implementing them in your MCU development environment. For example, with FreeRTOS, `rtosbackend_heapalloc` points to a wrapper in the C/C++ land that wraps `pvPortMalloc(...)`.
