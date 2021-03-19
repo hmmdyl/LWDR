@@ -64,7 +64,8 @@ extern(C) void myDFunction()
   foo.bar;
   delete foo; // don't forget to delete - there is no GC
   // delete will invoke rtosbackend_heapfreealloc(..)
-}```
+}
+```
 
 ```c++
 // main.h
