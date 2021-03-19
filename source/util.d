@@ -11,7 +11,7 @@ int stringCmpInternal(scope const char[] s1, scope const char[] s2) @trusted {
 extern(C) void* memset(void* s, int c, size_t n) {
 	auto d = cast(ubyte*)s;
 	while(n) {
-		*d = cast(ubyte)c;
+		*d++ = cast(ubyte)c;
 		n--;
 	}
 	return s;
