@@ -1,5 +1,8 @@
 # LWDR - Light Weight D Runtime
 
+### Notice:
+Looking for a new maintainer to manage this project. 
+
 ### What is this?
 This is the light weight D runtime - it is a barebones runtime targeting ARM Cortex CPUs. It works by abstracting hooks that the user can connect to their selected backend (be it an RTOS such as FreeRTOS, ChibiOS, etc or a minimalist system). 
 
