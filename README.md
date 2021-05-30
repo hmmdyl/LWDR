@@ -1,7 +1,7 @@
 # LWDR - Light Weight D Runtime
 
 ### Notice:
-Looking for a new maintainer to manage this project. 
+This is not a port of druntime! This is a completely new implementation for low-resource environments. Normal D code may not work here!
 
 ### What is this?
 This is the light weight D runtime - it is a barebones runtime targeting ARM Cortex CPUs. It works by abstracting hooks that the user can connect to their selected backend (be it an RTOS such as FreeRTOS, ChibiOS, etc or a minimalist system). 
@@ -15,23 +15,25 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 6. Basic RTTI (via `TypeInfo` stubs)
 7. Interfaces
 8. Static Arrays
+9. Virtual functions and overrides
+10. Abstract classes
+11. Static classes
+12. Allocation and deallocation of arrays
 
 ### What is in progress?
-9. Exceptions and Throwables (so far are currently working)
+13. Exceptions and Throwables (so far are working on GDC only)
 
 ### What doesn't work?
-10. Arrays
-11. Module constructors and destructors
-12. ModuleInfo
-
-### What is untested?
-13. Virtual functions and overrides
-14. Abstract classes
-15. Static classes
+14. Array concatenation and resizing
+15. Module constructors and destructors
+16. ModuleInfo
+17. There is no GC implmenetation
+18. Delegates/closures
+19. Associative arrays
 
 ### Which compilers can be used?
 GDC works the best. 
-LDC can only be used for points 1-8. Exception handling does not work on LDC.
+LDC can only be used for points 1-12. Exception handling does not work on LDC.
 DMD is not compatible.
 
 ### Has this been run on real hardware?

@@ -2,7 +2,7 @@ module object;
 
 import util;
 import rtoslink;
-import lifetime;
+import lifetime.throwable;
 
 version (D_LP64)
 {
@@ -107,6 +107,10 @@ class TypeInfo
     /// Returns size of the type.
     @property size_t tsize() nothrow pure const @safe @nogc { return 0; }
 
+	/** Get TypeInfo for 'next' type, as defined by what kind of type this is,
+    null if none. */
+    @property inout(TypeInfo) next() nothrow pure inout @nogc { return null; }
+
     /**
 	* Return default initializer.  If the type should be initialized to all
 	* zeros, an array with a null ptr and a length equal to the type size will
@@ -127,9 +131,10 @@ class TypeInfo_Enum : TypeInfo
     override @property size_t tsize() nothrow pure const { return base.tsize; }
 
 	override const(void)[] initializer() const
-    {
-        return m_init.length ? m_init : base.initializer();
-    }
+    { return m_init.length ? m_init : base.initializer(); }
+
+    override @property inout(TypeInfo) next() nothrow pure inout 
+	{ return base.next; }
 }
 
 class TypeInfo_Pointer : TypeInfo 
@@ -141,9 +146,10 @@ class TypeInfo_Pointer : TypeInfo
     override @property size_t tsize() nothrow pure const { return (void*).sizeof; }
 
 	override const(void)[] initializer() const @trusted
-    {
-        return (cast(void *)null)[0 .. (void*).sizeof];
-    }
+    { return (cast(void *)null)[0 .. (void*).sizeof]; }
+
+    override @property inout(TypeInfo) next() nothrow pure inout 
+	{ return m_next; }
 }
 
 class TypeInfo_Array : TypeInfo 
@@ -162,10 +168,14 @@ class TypeInfo_Array : TypeInfo
         return true;
 	}
 
+    override @property size_t tsize() nothrow pure const
+    { return (void[]).sizeof; }
+
 	override const(void)[] initializer() const @trusted
-    {
-        return (cast(void *)null)[0 .. (void[]).sizeof];
-    }
+    { return (cast(void *)null)[0 .. (void[]).sizeof]; }
+
+    override @property inout(TypeInfo) next() nothrow pure inout
+    { return value; }
 }
 
 class TypeInfo_Ai : TypeInfo_Array {}
@@ -189,18 +199,19 @@ class TypeInfo_StaticArray : TypeInfo
     { return len * value.tsize; }
 
     override const(void)[] initializer() nothrow pure const
-    {
-        return value.initializer();
-    }
+    { return value.initializer(); }
+
+    override @property inout(TypeInfo) next() nothrow pure inout 
+	{ return value; }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo {
 	TypeInfo value, key;
 
 	override const(void)[] initializer() const @trusted
-    {
-        return (cast(void *)null)[0 .. (char[int]).sizeof];
-    }
+    { return (cast(void *)null)[0 .. (char[int]).sizeof]; }
+
+    override @property inout(TypeInfo) next() nothrow pure inout { return value; }
 }
 
 class TypeInfo_Vector : TypeInfo 
@@ -210,9 +221,10 @@ class TypeInfo_Vector : TypeInfo
     override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
 
 	override const(void)[] initializer() nothrow pure const
-    {
-        return base.initializer();
-    }
+    { return base.initializer(); }
+
+    override @property inout(TypeInfo) next() nothrow pure inout 
+	{ return base.next; }
 }
 
 class TypeInfo_Function : TypeInfo 
@@ -262,6 +274,11 @@ class TypeInfo_Interface : TypeInfo
     {
         return (cast(void *)null)[0 .. Object.sizeof];
     }
+
+    override @property size_t tsize() nothrow pure const
+    {
+        return Object.sizeof;
+    }
 }
 
 class TypeInfo_Tuple : TypeInfo
@@ -310,6 +327,9 @@ class TypeInfo_Class : TypeInfo
 	void function(Object) defaultConstructor;
 	immutable(void)* rtInfo;
 
+	override @property size_t tsize() nothrow pure const
+    { return Object.sizeof; }
+
 	override bool equals(in void* p1, in void* p2) const
     {
         Object o1 = *cast(Object*)p1;
@@ -331,10 +351,13 @@ class TypeInfo_Const : TypeInfo {
 
     override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
 
+     override @property size_t tsize() nothrow pure const { return base.tsize; }
+
+    override @property inout(TypeInfo) next() nothrow pure inout 
+	{ return base.next; }
+
 	override const(void)[] initializer() nothrow pure const
-    {
-        return base.initializer();
-    }
+    { return base.initializer(); }
 }
 
 class TypeInfo_Struct : TypeInfo {

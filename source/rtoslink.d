@@ -9,6 +9,8 @@ extern(C) void rtosbackend_arrayBoundFailure(string file, uint line) nothrow pur
 extern(C) void rtosbackend_assert(string file, uint line) nothrow pure;
 extern(C) void rtosbackend_assertmsg(string msg, string file, uint line) nothrow pure;
 
+extern(C) void rtosbackend_outOfMemory() pure nothrow;
+
 extern(C) void rotsbackend_terminate();
 
 ubyte[] internal_heapalloc(uint sz) pure {
