@@ -4,7 +4,7 @@ import lifetime.common;
 
 extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
 {
-	auto tinext = unqualify(ti);
+	auto tinext = unqualify(ti.next);
 	auto size = tinext.tsize;
 
 	void* ptr = rtosbackend_heapalloc(size * length);
@@ -48,6 +48,32 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
 				return result;
 			}
     }
+}
+
+void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
+{
+    // Due to the fact that the delete operator calls destructors
+    // for arrays from the last element to the first, we maintain
+    // compatibility here by doing the same.
+    auto tsize = si.tsize;
+    for (auto curP = p + size - tsize; curP >= p; curP -= tsize)
+    {
+        // call destructor
+        si.dtor(curP);
+    }
+}
+
+extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti) 
+{
+	if(!p) return;
+
+	if(ti) // ti non-null only if ti is a struct with dtor
+	{
+		finalize_array(p.ptr, p.length * ti.tsize, ti);
+	}
+
+	rtosbackend_heapfreealloc((*p).ptr);
+	*p = null;
 }
 
 extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t srclen, size_t elemsz)
