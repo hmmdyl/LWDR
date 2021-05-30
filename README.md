@@ -18,13 +18,15 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 9. Virtual functions and overrides
 10. Abstract classes
 11. Static classes
-12. Allocation and deallocation of arrays
+12. Allocation and deallocation of dynamic arrays
+13. Concatenate an item to a dynamic array
+14. Concatenate two dynamic arrays together
 
 ### What is in progress?
 13. Exceptions and Throwables (so far are working on GDC only)
 
 ### What doesn't work?
-14. Array concatenation and resizing
+14. Dynamic array resizing
 15. Module constructors and destructors
 16. ModuleInfo
 17. There is no GC implmenetation
