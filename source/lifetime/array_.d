@@ -111,3 +111,22 @@ extern(C) byte[] _d_arrayappendcTX(const TypeInfo ti, return scope ref byte[] px
 	
 	return px;
 }
+
+extern(C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
+{
+	auto tiNext = unqualify(ti.next);
+	auto sizeElem = tiNext.tsize;
+
+	size_t xlen = x.length * sizeElem;
+	size_t ylen = y.length * sizeElem;
+	size_t len = xlen + ylen;
+
+	byte[] newArr = cast(byte[])rtosbackend_heapalloc(len)[0..len];
+	
+	import core.stdc.string;
+
+	memcpy(newArr.ptr, x.ptr, xlen);
+	memcpy(newArr.ptr + xlen, y.ptr, ylen);
+
+	return newArr[0..x.length + y.length];
+}
