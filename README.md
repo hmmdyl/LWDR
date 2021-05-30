@@ -21,21 +21,21 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 12. Allocation and deallocation of dynamic arrays
 13. Concatenate an item to a dynamic array
 14. Concatenate two dynamic arrays together
+15. Dynamic array resizing
 
 ### What is in progress?
-20. Exceptions and Throwables (so far are working on GDC only)
+16. Exceptions and Throwables (so far are working on GDC only)
 
 ### What doesn't work?
-30. Dynamic array resizing
-31. Module constructors and destructors
-32. ModuleInfo
-33. There is no GC implmenetation
-34. Delegates/closures
-35. Associative arrays
+17. Module constructors and destructors
+18. ModuleInfo
+19. There is no GC implmenetation
+20. Delegates/closures
+21. Associative arrays
 
 ### Which compilers can be used?
 GDC works the best. 
-LDC can only be used for points 1-14. Exception handling does not work on LDC.
+LDC can only be used for points 1-15. Exception handling does not work on LDC.
 DMD is not compatible.
 
 ### Has this been run on real hardware?
