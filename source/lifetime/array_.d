@@ -175,3 +175,39 @@ extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]
 	*p = newArr[0 .. newlength];
 	return *p;
 }
+
+extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) pure nothrow
+{
+	import core.stdc.string;
+	static void doInitialize(void *start, void *end, const void[] initializer)
+    {
+        if (initializer.length == 1)
+        {
+            memset(start, *(cast(ubyte*)initializer.ptr), end - start);
+        }
+        else
+        {
+            auto q = initializer.ptr;
+            immutable initsize = initializer.length;
+            for (; start < end; start += initsize)
+            {
+                memcpy(start, q, initsize);
+            }
+        }
+    }
+
+	auto tiNext = unqualify(ti.next);
+	auto sizeElem = tiNext.tsize;
+	auto newArr = _d_newarrayU(ti, newlength);
+
+	import core.stdc.string;
+
+	memcpy(newArr.ptr, p.ptr, p.length * sizeElem);
+
+	doInitialize(newArr.ptr + p.length * sizeElem, 
+				 newArr.ptr + newlength * sizeElem,
+				 tiNext.initializer);
+
+	*p = newArr[0 .. newlength];
+	return *p;
+}
