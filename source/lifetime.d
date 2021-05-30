@@ -1,6 +1,40 @@
-module memory;
+module lifetime;
 
 import rtoslink;
+
+// strip const/immutable/shared/inout from type info
+inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc
+{
+    TypeInfo ti = cast() cti;
+    while (ti)
+    {
+        // avoid dynamic type casts
+        auto tti = typeid(ti);
+        if (tti is typeid(TypeInfo_Const))
+            ti = (cast(TypeInfo_Const)cast(void*)ti).base;
+        else if (tti is typeid(TypeInfo_Invariant))
+            ti = (cast(TypeInfo_Invariant)cast(void*)ti).base;
+        else if (tti is typeid(TypeInfo_Shared))
+            ti = (cast(TypeInfo_Shared)cast(void*)ti).base;
+        else if (tti is typeid(TypeInfo_Inout))
+            ti = (cast(TypeInfo_Inout)cast(void*)ti).base;
+        else
+            break;
+    }
+    return ti;
+}
+
+// size used to store the TypeInfo at the end of an allocation for structs that have a destructor
+size_t structTypeInfoSize(const TypeInfo ti) pure nothrow @nogc
+{
+    if (ti && typeid(ti) is typeid(TypeInfo_Struct)) // avoid a complete dynamic type cast
+    {
+        auto sti = cast(TypeInfo_Struct)cast(void*)ti;
+        if (sti.xdtor)
+            return size_t.sizeof;
+    }
+    return 0;
+}
 
 extern(C) Object _d_newclass(const TypeInfo_Class ti) 
 { 
@@ -8,7 +42,8 @@ extern(C) Object _d_newclass(const TypeInfo_Class ti)
 	foreach(i; 0 .. ti.m_init.length)
 		buff[i] = ti.m_init[i];
 	return cast(Object)buff.ptr;
- }
+}
+
 extern(C) void _d_delclass(Object* o) 
 {
 	rtosbackend_heapfreealloc(cast(void*)*o);
@@ -23,7 +58,61 @@ extern(C) Object _d_allocclass(TypeInfo_Class ti)
 	return cast(Object)buff.ptr;
 }
 
-extern(C) void* _d_newitemT(const TypeInfo ti) { return null; }
+/**
+* Allocate an uninitialized non-array item.
+* This is an optimization to avoid things needed for arrays like the __arrayPad(size).
+*/
+extern(C) void* _d_newitemU(scope const TypeInfo _ti) nothrow pure 
+{
+    auto ti = unqualify(_ti);
+    immutable tiSize = structTypeInfoSize(ti);
+    immutable itemSize = ti.tsize;
+    immutable size = itemSize + tiSize;
+
+    auto p = internal_heapalloc(size);
+    
+    if(tiSize) 
+	{
+        *cast(TypeInfo*)(p.ptr + itemSize) = null;
+        *cast(TypeInfo*)(p.ptr + tiSize) = cast()ti;
+	}
+    return p.ptr;
+}
+
+/// Same as above, zero initializes the item.
+extern(C) void* _d_newitemT(const TypeInfo ti) pure nothrow
+{ 
+    auto p = _d_newitemU(ti);
+    foreach(i; 0 .. ti.tsize) 
+	{
+        (cast(ubyte*)p)[i] = 0;
+	}
+    return p;
+}
+
+/// Same as above, for item with non-zero initializer.
+extern (C) void* _d_newitemiT(in TypeInfo _ti) pure nothrow
+{
+    auto p = _d_newitemU(_ti);
+    const ubyte[] init = cast(const ubyte[])_ti.initializer();
+    assert(init.length <= _ti.tsize);
+
+    foreach(i; 0 .. init.length) {
+        (cast(ubyte*)p)[i] = init[i];
+	}
+
+    return p;
+}
+
+extern (C) void _d_delmemory(void* *p)
+{
+    if (*p)
+    {
+        rtosbackend_heapfreealloc(*p);
+        *p = null;
+    }
+}
+
 
 nothrow extern(C) void _d_delThrowable(Throwable t) @trusted @nogc
 {

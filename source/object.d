@@ -2,7 +2,7 @@ module object;
 
 import util;
 import rtoslink;
-import memory;
+import lifetime;
 
 version (D_LP64)
 {
@@ -42,7 +42,7 @@ class Object
 		return addr ^ (addr >>> 4);
 	}
 	
-	int opCmp(Object o) { assert(false, "not implemented"); return 0; }
+	int opCmp(Object o) { assert(false, "not implemented"); }
 	bool opEquals(Object o) { return this is o; }
 	
 	static Object factory(string classname) { return null; }
@@ -101,9 +101,19 @@ struct OffsetTypeInfo
 
 class TypeInfo 
 {
+    /// Compares two instances for equality.
 	bool equals(in void* p1, in void* p2) const { return p1 == p2; }
 
+    /// Returns size of the type.
     @property size_t tsize() nothrow pure const @safe @nogc { return 0; }
+
+    /**
+	* Return default initializer.  If the type should be initialized to all
+	* zeros, an array with a null ptr and a length equal to the type size will
+	* be returned. For static arrays, this returns the default initializer for
+	* a single element of the array, use `tsize` to get the correct size.
+	*/
+    abstract const(void)[] initializer() nothrow pure const @safe @nogc;
 }
 
 class TypeInfo_Enum : TypeInfo 
@@ -115,6 +125,11 @@ class TypeInfo_Enum : TypeInfo
 	override bool equals(in void* p1, in void* p2) const
 	{ return base.equals(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
+
+	override const(void)[] initializer() const
+    {
+        return m_init.length ? m_init : base.initializer();
+    }
 }
 
 class TypeInfo_Pointer : TypeInfo 
@@ -124,6 +139,11 @@ class TypeInfo_Pointer : TypeInfo
     override bool equals(in void* p1, in void* p2) const
 	{ return *cast(void**)p1 == *cast(void**)p2; }
     override @property size_t tsize() nothrow pure const { return (void*).sizeof; }
+
+	override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. (void*).sizeof];
+    }
 }
 
 class TypeInfo_Array : TypeInfo 
@@ -141,6 +161,11 @@ class TypeInfo_Array : TypeInfo
                 return false;
         return true;
 	}
+
+	override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. (void[]).sizeof];
+    }
 }
 
 class TypeInfo_Ai : TypeInfo_Array {}
@@ -162,10 +187,20 @@ class TypeInfo_StaticArray : TypeInfo
 
     override @property size_t tsize() nothrow pure const
     { return len * value.tsize; }
+
+    override const(void)[] initializer() nothrow pure const
+    {
+        return value.initializer();
+    }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo {
 	TypeInfo value, key;
+
+	override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. (char[int]).sizeof];
+    }
 }
 
 class TypeInfo_Vector : TypeInfo 
@@ -173,11 +208,21 @@ class TypeInfo_Vector : TypeInfo
     TypeInfo base;
 
     override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
+
+	override const(void)[] initializer() nothrow pure const
+    {
+        return base.initializer();
+    }
 }
 
 class TypeInfo_Function : TypeInfo 
 {
 	string deco;
+
+    override const(void)[] initializer() const @safe
+    {
+        return null;
+    }
 }
 
 class TypeInfo_Delegate : TypeInfo 
@@ -189,6 +234,11 @@ class TypeInfo_Delegate : TypeInfo
         auto dg1 = *cast(void delegate()*)p1;
         auto dg2 = *cast(void delegate()*)p2;
         return dg1 == dg2;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. (int delegate()).sizeof];
     }
 }
 
@@ -206,6 +256,11 @@ class TypeInfo_Interface : TypeInfo
         Object o2 = cast(Object)(*cast(void**)p2 - pi.offset);
 
         return o1 == o2 || (o1 && o1.opCmp(o2) == 0);
+    }
+
+	override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. Object.sizeof];
     }
 }
 
@@ -227,6 +282,16 @@ class TypeInfo_Tuple : TypeInfo
             return true;
         }
         return false;
+    }
+
+	override @property size_t tsize() nothrow pure const
+    {
+        assert(0);
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        assert(0);
     }
 }
 
@@ -252,6 +317,11 @@ class TypeInfo_Class : TypeInfo
 
         return (o1 is o2) || (o1 && o1.opEquals(o2));
     }
+
+	override const(void)[] initializer() nothrow pure const @safe
+    {
+        return m_init;
+    }
 }
 alias ClassInfo = TypeInfo_Class;
 
@@ -260,6 +330,11 @@ class TypeInfo_Const : TypeInfo {
 	TypeInfo base; 
 
     override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
+
+	override const(void)[] initializer() nothrow pure const
+    {
+        return base.initializer();
+    }
 }
 
 class TypeInfo_Struct : TypeInfo {
@@ -296,6 +371,16 @@ class TypeInfo_Struct : TypeInfo {
                     return false;
             return true;
 		}
+    }
+
+    override @property size_t tsize() nothrow pure const
+    {
+        return initializer().length;
+    }
+
+    override const(void)[] initializer() nothrow pure const @safe
+    {
+        return m_init;
     }
 }
 
