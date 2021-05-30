@@ -90,3 +90,24 @@ extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t s
 		len--;
 	}
 }
+
+extern(C) byte[] _d_arrayappendcTX(const TypeInfo ti, return scope ref byte[] px, size_t n)
+{
+	auto tinext = unqualify(ti.next);
+	auto elemSize = tinext.tsize;
+
+	auto length = px.length;
+	auto size = length * elemSize;
+	auto newLength = length + n;
+	auto newSize = newLength * elemSize;
+
+	auto newArray = _d_newarrayU(ti, newLength);
+
+	import core.stdc.string;
+
+	memcpy(newArray.ptr, cast(void*)px.ptr, size);
+	(cast(void **)(&px))[1] = newArray.ptr;
+	*cast(size_t *)&px = cast(size_t)newLength;
+	
+	return px;
+}
