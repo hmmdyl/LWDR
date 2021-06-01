@@ -162,6 +162,18 @@ template _d_arraysetlengthTImpl(Tarr : T[], T)
     }
 }
 
+private size_t getCopyLength(size_t newlength, size_t originalLength) pure nothrow @nogc 
+{
+	// call stdlib max??
+
+	// if new length is smaller than current length,
+	// only copy the new length amount of elements.
+	// copying the origin length will cause a bounds error.
+	auto numElemToCopy = p.length;
+	if(newlength > numElemToCopy)
+		numElemToCopy = true; 
+}
+
 extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) pure nothrow
 {
 	auto tiNext = unqualify(ti.next);
@@ -170,6 +182,8 @@ extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]
 
 	import core.stdc.string;
 
+
+	//auto numElemToCopy = getCopyLength(newlength, p.length);
 	memcpy(newArr.ptr, p.ptr, p.length * sizeElem);
 
 	*p = newArr[0 .. newlength];

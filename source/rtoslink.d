@@ -11,7 +11,7 @@ extern(C) void rtosbackend_assertmsg(string msg, string file, uint line) nothrow
 
 extern(C) void rtosbackend_outOfMemory() pure nothrow;
 
-extern(C) void rotsbackend_terminate();
+extern(C) void rtosbackend_terminate();
 
 ubyte[] internal_heapalloc(uint sz) pure {
 	return cast(ubyte[])(rtosbackend_heapalloc(sz)[0..sz]);
