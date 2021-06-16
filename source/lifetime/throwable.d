@@ -12,5 +12,5 @@ nothrow extern(C) void _d_delThrowable(Throwable t) @trusted @nogc
     t.refcount = t.refcount - 1;
 
 	rt_finalize(cast(void*)t);
-	rtosbackend_heapfreealloc(cast(void*)t);
+	lwdrInternal_free(cast(void*)t);
 }

@@ -13,7 +13,7 @@ extern(C) void* _d_newitemU(scope const TypeInfo _ti) nothrow pure
     immutable itemSize = ti.tsize;
     immutable size = itemSize + tiSize;
 
-    auto p = internal_heapalloc(size);
+    auto p = lwdrInternal_allocBytes(size);
 
     if(tiSize) 
 	{

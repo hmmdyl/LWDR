@@ -1,12 +1,12 @@
 module lifetime.common;
 
-public import rtoslink;
+public import lwdr.tracking;
 
 extern (C) void _d_delmemory(void* *p)
 {
     if (*p)
     {
-        rtosbackend_heapfreealloc(*p);
+        lwdrInternal_free(*p);
         *p = null;
     }
 }

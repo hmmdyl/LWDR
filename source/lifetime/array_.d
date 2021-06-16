@@ -7,7 +7,7 @@ extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
 	auto tinext = unqualify(ti.next);
 	auto size = tinext.tsize;
 
-	void* ptr = rtosbackend_heapalloc(size * length);
+	void* ptr = lwdrInternal_alloc(size * length);
 	zeroMem(ptr, size * length);
 	return ptr[0 .. size * length];
 }
@@ -72,7 +72,7 @@ extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
 		finalize_array(p.ptr, p.length * ti.tsize, ti);
 	}
 
-	rtosbackend_heapfreealloc((*p).ptr);
+	lwdrInternal_free((*p).ptr);
 	*p = null;
 }
 
@@ -121,7 +121,7 @@ extern(C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
 	size_t ylen = y.length * sizeElem;
 	size_t len = xlen + ylen;
 
-	byte[] newArr = cast(byte[])rtosbackend_heapalloc(len)[0..len];
+	byte[] newArr = cast(byte[])lwdrInternal_alloc(len)[0..len];
 	
 	import core.stdc.string;
 
