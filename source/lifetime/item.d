@@ -6,7 +6,7 @@ import lifetime.common;
 * Allocate an uninitialized non-array item.
 * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
 */
-extern(C) void* _d_newitemU(scope const TypeInfo _ti) nothrow pure 
+extern(C) void* _d_newitemU(scope const TypeInfo _ti) nothrow 
 {
     auto ti = unqualify(_ti);
     immutable tiSize = structTypeInfoSize(ti);
@@ -24,7 +24,7 @@ extern(C) void* _d_newitemU(scope const TypeInfo _ti) nothrow pure
 }
 
 /// Same as above, zero initializes the item.
-extern(C) void* _d_newitemT(const TypeInfo ti) pure nothrow
+extern(C) void* _d_newitemT(const TypeInfo ti) nothrow
 { 
     auto p = _d_newitemU(ti);
     foreach(i; 0 .. ti.tsize) 
@@ -35,7 +35,7 @@ extern(C) void* _d_newitemT(const TypeInfo ti) pure nothrow
 }
 
 /// Same as above, for item with non-zero initializer.
-extern (C) void* _d_newitemiT(in TypeInfo _ti) pure nothrow
+extern (C) void* _d_newitemiT(in TypeInfo _ti) nothrow
 {
     auto p = _d_newitemU(_ti);
     const ubyte[] init = cast(const ubyte[])_ti.initializer();

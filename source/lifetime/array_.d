@@ -2,7 +2,7 @@ module lifetime.array_;
 
 import lifetime.common;
 
-extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
+extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) nothrow
 {
 	auto tinext = unqualify(ti.next);
 	auto size = tinext.tsize;
@@ -12,7 +12,7 @@ extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
 	return ptr[0 .. size * length];
 }
 
-extern(C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
+extern(C) void[] _d_newarrayT(const TypeInfo ti, size_t length) nothrow
 {
 	return _d_newarrayU(ti, length);
 }
@@ -20,7 +20,7 @@ extern(C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
 /**
 * For when the array has a non-zero initializer.
 */
-extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
+extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) nothrow
 {
     import core.internal.traits : AliasSeq;
 
@@ -143,7 +143,7 @@ template _d_arraysetlengthTImpl(Tarr : T[], T)
 	* Bugs:
 	*   The safety level of this function is faked. It shows itself as `@trusted pure nothrow` to not break existing code.
 	*/
-    size_t _d_arraysetlengthT(return scope ref Tarr arr, size_t newlength) @trusted pure nothrow
+    size_t _d_arraysetlengthT(return scope ref Tarr arr, size_t newlength) @trusted nothrow
     {
         pragma(inline, false);
         version (D_TypeInfo)
@@ -162,14 +162,14 @@ template _d_arraysetlengthTImpl(Tarr : T[], T)
     }
 }
 
-private size_t getCopyLength(size_t newlength, size_t originalLength) pure nothrow @nogc 
+private size_t getCopyLength(size_t newlength, size_t originalLength) nothrow @nogc 
 {
 	if(newlength > originalLength)
 		return originalLength;
 	else return newlength; // newlength less than originalLength
 }
 
-extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) pure nothrow
+extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) nothrow
 {
 	auto tiNext = unqualify(ti.next);
 	auto sizeElem = tiNext.tsize;
@@ -184,7 +184,7 @@ extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]
 	return *p;
 }
 
-extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) pure nothrow
+extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) nothrow
 {
 	import core.stdc.string;
 	static void doInitialize(void *start, void *end, const void[] initializer)
