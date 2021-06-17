@@ -65,8 +65,11 @@ version(LWDR_TrackMem)
 		}
 	}
 
-	private AllocationList!(void*, 16) trackedAllocations;
-
+	version(LWDR_TLS)
+		private AllocationList!(void*, 16) trackedAllocations;
+	else
+		private __gshared AllocationList!(void*, 16) trackedAllocations;
+	
 	struct MemAlloc
 	{
 		size_t allocsAtScope;
@@ -90,7 +93,10 @@ version(LWDR_TrackMem)
 		return MemAlloc(trackedAllocations.length);
 	}
 
-	private bool currentlyTracking = false;
+	version(LWDR_TLS)
+		private bool currentlyTracking = false;
+	else
+		private __gshared bool currentlyTracking = false;
 	void enableMemoryTracking() nothrow @nogc { currentlyTracking = true; }
 	void disableMemoryTracking() nothrow @nogc { currentlyTracking = false; }
 
