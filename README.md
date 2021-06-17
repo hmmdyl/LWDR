@@ -58,6 +58,9 @@ Here is an example code using FreeRTOS:
 ```d
 //myapp.d
 module myapp;
+
+import lwdr;
+
 class Foo 
 {
   this() 
@@ -75,8 +78,8 @@ extern(C) void myDFunction()
 {
   Foo foo = new Foo; // this will invoke rtosbackend_heapalloc(..)
   foo.bar;
-  delete foo; // don't forget to delete - there is no GC
-  // delete will invoke rtosbackend_heapfreealloc(..)
+  LWDR.free(foo); // don't forget to free - there is no GC
+  // LWDR.free will invoke rtosbackend_heapfreealloc(..)
 }
 ```
 
