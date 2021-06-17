@@ -156,3 +156,11 @@ GDB will be able to set breakpoints in D code and perform steps normally.
 
 ### Credit
 Credit to [Adam D. Ruppe](https://github.com/adamdruppe) for his [webassembly](https://github.com/adamdruppe/webassembly) project that forms the basis of this project.
+
+Credit to [D Language Foundation](https://github.com/dlang) for its [D runtime](https://github.com/dlang/druntime).
+
+Credit to [LDC Developers](https://github.com/ldc-developers) for its [D runtime](https://github.com/ldc-developers/druntime).
+
+Credit to [GDC](https://gdcproject.org/) for its [D runtime](https://github.com/gcc-mirror/gcc/tree/master/libphobos).
+
+Credit to [denizzka](https://github.com/denizzzka) for his [d_c_arm_test](https://github.com/denizzzka/d_c_arm_test) which helped with the implementation of TLS (thread local storage).
