@@ -12,8 +12,13 @@ extern(C) Object _d_newclass(const TypeInfo_Class ti)
 
 extern(C) void _d_delclass(Object* o) nothrow @nogc
 {
-	lwdrInternal_free(cast(void*)*o);
-	*o = null;
+    if(*o)
+	{
+        rt_finalize(cast(void*)*o);
+
+	    lwdrInternal_free(cast(void*)*o);
+	    *o = null;
+    }
 }
 
 extern(C) Object _d_allocclass(TypeInfo_Class ti) 
