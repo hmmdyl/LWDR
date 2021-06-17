@@ -2,6 +2,8 @@ module lifetime.array_;
 
 import lifetime.common;
 
+version(LWDR_DynamicArray):
+
 extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) nothrow
 {
 	auto tinext = unqualify(ti.next);

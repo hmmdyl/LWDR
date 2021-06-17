@@ -4,6 +4,7 @@ import util;
 import rtoslink;
 import lifetime.throwable;
 
+version(LWDR_DynamicArray)
 public import lifetime.array_ : _d_arraysetlengthTImpl;
 
 version (D_LP64)
@@ -101,6 +102,11 @@ struct OffsetTypeInfo
 }
 //enum immutable(void)* rtinfoHasPointers = cast(void*)1;
 
+version(LWDR_DynamicArray)
+{
+    version = LWDR_INTERNAL_ti_next;
+}
+
 class TypeInfo 
 {
     /// Compares two instances for equality.
@@ -111,6 +117,7 @@ class TypeInfo
 
 	/** Get TypeInfo for 'next' type, as defined by what kind of type this is,
     null if none. */
+    version(LWDR_INTERNAL_ti_next)
     @property inout(TypeInfo) next() nothrow pure inout @nogc { return null; }
 
     /**
@@ -135,6 +142,7 @@ class TypeInfo_Enum : TypeInfo
 	override const(void)[] initializer() const
     { return m_init.length ? m_init : base.initializer(); }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout 
 	{ return base.next; }
 }
@@ -150,6 +158,7 @@ class TypeInfo_Pointer : TypeInfo
 	override const(void)[] initializer() const @trusted
     { return (cast(void *)null)[0 .. (void*).sizeof]; }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout 
 	{ return m_next; }
 }
@@ -176,6 +185,7 @@ class TypeInfo_Array : TypeInfo
 	override const(void)[] initializer() const @trusted
     { return (cast(void *)null)[0 .. (void[]).sizeof]; }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout
     { return value; }
 }
@@ -201,6 +211,7 @@ class TypeInfo_StaticArray : TypeInfo
     override const(void)[] initializer() nothrow pure const
     { return value.initializer(); }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout 
 	{ return value; }
 }
@@ -211,6 +222,7 @@ class TypeInfo_AssociativeArray : TypeInfo {
 	override const(void)[] initializer() const @trusted
     { return (cast(void *)null)[0 .. (char[int]).sizeof]; }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout { return value; }
 }
 
@@ -223,6 +235,7 @@ class TypeInfo_Vector : TypeInfo
 	override const(void)[] initializer() nothrow pure const
     { return base.initializer(); }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout 
 	{ return base.next; }
 }
@@ -351,8 +364,9 @@ class TypeInfo_Const : TypeInfo {
 
     override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
 
-     override @property size_t tsize() nothrow pure const { return base.tsize; }
+    override @property size_t tsize() nothrow pure const { return base.tsize; }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() nothrow pure inout 
 	{ return base.next; }
 

@@ -268,6 +268,7 @@ the same, have the same ABI flags, and compare the same for equality. For orderi
 during compilation whether they have different signedness and override appropriately. For initializer, we
 detect if we need to override. The overriding initializer should be nonzero.
 */
+version(LWDR_INTERNAL_ti_next)
 private class TypeInfoArrayGeneric(T, Base = T) : Select!(is(T == Base), TypeInfo_Array, TypeInfoArrayGeneric!Base)
 {
     static if (is(T == Base))
@@ -325,6 +326,7 @@ private class TypeInfoArrayGeneric(T, Base = T) : Select!(is(T == Base), TypeInf
         }+/
 	}
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() inout
     {
         return cast(inout) typeid(T);
@@ -375,6 +377,8 @@ class TypeInfo_f : TypeInfoGeneric!float {}
 class TypeInfo_d : TypeInfoGeneric!double {}
 class TypeInfo_e : TypeInfoGeneric!real {}
 
+version(LWDR_DynamicArray) {
+
 class TypeInfo_Ah : TypeInfoArrayGeneric!ubyte {}
 class TypeInfo_Ab : TypeInfoArrayGeneric!(bool, ubyte) {}
 class TypeInfo_Ag : TypeInfoArrayGeneric!(byte, ubyte) {}
@@ -398,6 +402,7 @@ class TypeInfo_Al : TypeInfoArrayGeneric!(long, ulong) {}
 class TypeInfo_Af : TypeInfoArrayGeneric!float {}
 class TypeInfo_Ad : TypeInfoArrayGeneric!double {}
 class TypeInfo_Ae : TypeInfoArrayGeneric!real {}
+}
 
 // typeof(null)
 class TypeInfo_n : TypeInfo
@@ -451,11 +456,13 @@ class TypeInfo_n : TypeInfo
     }
 }
 
+version(LWDR_DynamicArray) {
 // void[] is a bit different, behaves like ubyte[] for comparison purposes.
 class TypeInfo_Av : TypeInfo_Ah
 {
     override string toString() const { return "void[]"; }
 
+    version(LWDR_INTERNAL_ti_next)
     override @property inout(TypeInfo) next() inout
     {
         return cast(inout) typeid(void);
@@ -466,4 +473,5 @@ class TypeInfo_Av : TypeInfo_Ah
         assert(typeid(void[]).toString == "void[]");
         assert(typeid(void[]).next == typeid(void));
     }
+}
 }
