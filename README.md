@@ -18,10 +18,10 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 9. Virtual functions and overrides
 10. Abstract classes
 11. Static classes
-12. Allocation and deallocation of dynamic arrays
-13. Concatenate an item to a dynamic array
-14. Concatenate two dynamic arrays together
-15. Dynamic array resizing
+12. Allocation and deallocation of dynamic arrays (opt in by version `LWDR_DynamicArray`)
+13. Concatenate an item to a dynamic array (opt in by version `LWDR_DynamicArray`)
+14. Concatenate two dynamic arrays together (opt in by version `LWDR_DynamicArray`)
+15. Dynamic array resizing (opt in by version `LWDR_DynamicArray`)
 16. Thread local storage (opt in by version `LWDR_TLS`)
 
 ### What is in progress?
