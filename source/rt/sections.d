@@ -52,6 +52,12 @@ void[] initTLSRanges() nothrow @nogc
 	return memory[0 .. tls.fullSize];
 }
 
+void freeTLSRanges() nothrow @nogc
+{
+	auto memory = rtosbackend_getTLSPointerCurrThread(tlsPointerIndex);
+	rtosbackend_heapfreealloc(memory);
+}
+
 extern(C) void* __aeabi_read_tp() nothrow @nogc
 {
 	return rtosbackend_getTLSPointerCurrThread(tlsPointerIndex) - ARM_EABI_TCB_SIZE;

@@ -2,6 +2,11 @@ module rt.util.typeinfo;
 
 import rt.util.utility;
 
+version(LWDR_DynamicArray)
+{
+    version = LWDR_INTERNAL_ti_next;
+}
+
 // Reduces to `T` if `cond` is `true` or `U` otherwise.
 private template Select(bool cond, T, U)
 {
@@ -268,7 +273,7 @@ the same, have the same ABI flags, and compare the same for equality. For orderi
 during compilation whether they have different signedness and override appropriately. For initializer, we
 detect if we need to override. The overriding initializer should be nonzero.
 */
-version(LWDR_INTERNAL_ti_next)
+version(LWDR_DynamicArray)
 private class TypeInfoArrayGeneric(T, Base = T) : Select!(is(T == Base), TypeInfo_Array, TypeInfoArrayGeneric!Base)
 {
     static if (is(T == Base))

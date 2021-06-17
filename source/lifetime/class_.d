@@ -10,7 +10,7 @@ extern(C) Object _d_newclass(const TypeInfo_Class ti)
 	return cast(Object)buff.ptr;
 }
 
-extern(C) void _d_delclass(Object* o) 
+extern(C) void _d_delclass(Object* o) nothrow @nogc
 {
 	lwdrInternal_free(cast(void*)*o);
 	*o = null;

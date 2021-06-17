@@ -65,7 +65,7 @@ void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
     }
 }
 
-extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti) 
+extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
 {
 	if(!p) return;
 
