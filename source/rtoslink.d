@@ -9,6 +9,9 @@ extern(C) void rtosbackend_arrayBoundFailure(string file, uint line) nothrow pur
 extern(C) void rtosbackend_assert(string file, uint line) nothrow pure;
 extern(C) void rtosbackend_assertmsg(string msg, string file, uint line) nothrow pure;
 
+extern(C) void rtosbackend_setTLSPointerCurrThread(void* ptr, int index);
+extern(C) void* rtosbackend_getTLSPointerCurrThread(int index);
+
 extern(C) void rtosbackend_outOfMemory() pure nothrow;
 
 extern(C) void rtosbackend_terminate();
