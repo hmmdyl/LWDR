@@ -29,10 +29,12 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 
 ### What doesn't work?
 18. Module constructors and destructors
-19. ModuleInfo
-20. There is no GC implmenetation (primitive memory tracking is now available with `LWDR_TrackMem`)
-21. Delegates/closures
-22. Associative arrays
+19. Static constructors and destructors
+20. Shared static constructors and destructors
+21. ModuleInfo
+22. There is no GC implmenetation (primitive memory tracking is now available with `LWDR_TrackMem`, RefCount!T and Unique!T are now available)
+23. Delegates/closures
+24. Associative arrays
 
 ### Which compilers can be used?
 GDC works the best. 
