@@ -24,15 +24,13 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 15. Dynamic array resizing (opt in by version `LWDR_DynamicArray`)
 16. Thread local storage (opt in by version `LWDR_TLS`)
 
-### What is in progress?
-17. Exceptions and Throwables (so far are working on GDC only)
-
 ### What doesn't work?
+17. Exceptions and Throwables (experimental implementation was removed)
 18. Module constructors and destructors
 19. Static constructors and destructors
 20. Shared static constructors and destructors
-21. ModuleInfo
-22. There is no GC implmenetation (primitive memory tracking is now available with `LWDR_TrackMem`, RefCount!T and Unique!T are now available)
+21. Module info
+22. There is no GC implmenetation (primitive memory tracking is now available with `LWDR_TrackMem`, `RefCount!T` and `Unique!T` are now available)
 23. Delegates/closures
 24. Associative arrays
 
