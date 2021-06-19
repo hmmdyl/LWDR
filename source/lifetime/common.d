@@ -2,6 +2,7 @@ module lifetime.common;
 
 public import lwdr.tracking;
 
+/// Deallocate heap memory
 extern (C) void _d_delmemory(void* *p)
 {
     if (*p)
@@ -45,6 +46,7 @@ size_t structTypeInfoSize(const TypeInfo ti) pure nothrow @nogc
     return 0;
 }
 
+/// Finalize (run dtors) on type
 extern(C) void rt_finalize(void* p, bool det = true, bool resetMemory = true) nothrow @nogc @trusted
 {
 	auto ppv = cast(void**)p;
@@ -68,6 +70,7 @@ extern(C) void rt_finalize(void* p, bool det = true, bool resetMemory = true) no
 	}
 }
 
+/// Zero the memory of target `ptr`
 package void zeroMem(void* ptr, const size_t length) pure nothrow @nogc {
     ubyte* ptru = cast(ubyte*)ptr;
     foreach(i; 0 .. length) {

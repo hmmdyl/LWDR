@@ -1,5 +1,6 @@
 module arrimpl;
 
+/// Copy an array byte-by-byte from `from` to `to`.
 extern(C) void[] _d_arraycopy(size_t size, void[] from, void[] to) nothrow @nogc
 {
     auto fromBytes = cast(ubyte[])from;
@@ -11,6 +12,7 @@ extern(C) void[] _d_arraycopy(size_t size, void[] from, void[] to) nothrow @nogc
     return to;
 }
 
+/// Determine equivalence of two arrays
 extern(C) int _adEq2(void[] a1, void[] a2, TypeInfo ti) 
 {
     if(a1.length != a2.length) return 0;

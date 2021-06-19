@@ -138,5 +138,3 @@ extern(C) int _d_isbaseof(scope ClassInfo oc, scope const ClassInfo c) @safe pur
 
     return false;
 }
-
-//extern(C) void __aeabi_read_tp() {}

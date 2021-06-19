@@ -2,6 +2,7 @@ module lifetime.throwable;
 
 import lifetime.common;
 
+/// Delete a `Throwable` (exception handling support)
 nothrow extern(C) void _d_delThrowable(Throwable t) @trusted @nogc
 {
 	if(t is null) return;
