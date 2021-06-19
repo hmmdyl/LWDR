@@ -2,8 +2,33 @@ module lifetime.array_;
 
 import lifetime.common;
 
+/// Copy an array byte-by-byte from `from` to `to`.
+extern(C) void[] _d_arraycopy(size_t size, void[] from, void[] to) nothrow @nogc
+{
+    auto fromBytes = cast(ubyte[])from;
+    auto toBytes = cast(ubyte[])to;
+
+    foreach(size_t i; 0 .. size)
+        toBytes[i] = fromBytes[i];
+
+    return to;
+}
+
+/// Determine equivalence of two arrays
+extern(C) int _adEq2(void[] a1, void[] a2, TypeInfo ti) 
+{
+    if(a1.length != a2.length) return 0;
+    if(!ti.equals(&a1, &a2)) return 0;
+
+    return 1;
+}
+
 version(LWDR_DynamicArray):
 
+/**
+* Allocate a new uninitialized array of length elements.
+* ti is the type of the resulting array, or pointer to element.
+*/
 extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) nothrow
 {
 	auto tinext = unqualify(ti.next);
@@ -14,6 +39,11 @@ extern(C) void[] _d_newarrayU(const TypeInfo ti, size_t length) nothrow
 	return ptr[0 .. size * length];
 }
 
+/**
+* Allocate a new array of length elements.
+* ti is the type of the resulting array, or pointer to element.
+* (For when the array is initialized to 0)
+*/
 extern(C) void[] _d_newarrayT(const TypeInfo ti, size_t length) nothrow
 {
 	return _d_newarrayU(ti, length);
@@ -52,6 +82,7 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) nothrow
     }
 }
 
+/// Finalize the elements in array `p`
 void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
 {
     // Due to the fact that the delete operator calls destructors
@@ -65,6 +96,7 @@ void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
     }
 }
 
+/// Finalize (if possible) and deallocate target array `p`
 extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
 {
 	if(!p) return;
@@ -78,6 +110,7 @@ extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
 	*p = null;
 }
 
+/// Copy items from one slice into another
 extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t srclen, size_t elemsz)
 {
 	auto d = cast(ubyte*) dst;
@@ -93,6 +126,10 @@ extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t s
 	}
 }
 
+/**
+* Extend an array by n elements.
+* Caller must initialize those elements.
+*/
 extern(C) byte[] _d_arrayappendcTX(const TypeInfo ti, return scope ref byte[] px, size_t n)
 {
 	auto tinext = unqualify(ti.next);
@@ -114,6 +151,7 @@ extern(C) byte[] _d_arrayappendcTX(const TypeInfo ti, return scope ref byte[] px
 	return px;
 }
 
+/// Concatenate two arrays
 extern(C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
 {
 	auto tiNext = unqualify(ti.next);
@@ -164,6 +202,7 @@ template _d_arraysetlengthTImpl(Tarr : T[], T)
     }
 }
 
+/// Figure out how many elements to copy
 private size_t getCopyLength(size_t newlength, size_t originalLength) nothrow @nogc 
 {
 	if(newlength > originalLength)
@@ -171,6 +210,9 @@ private size_t getCopyLength(size_t newlength, size_t originalLength) nothrow @n
 	else return newlength; // newlength less than originalLength
 }
 
+/**
+* Resize dynamic arrays with 0 initializers.
+*/
 extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) nothrow
 {
 	auto tiNext = unqualify(ti.next);
@@ -186,6 +228,14 @@ extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]
 	return *p;
 }
 
+/**
+* Resize arrays for non-zero initializers.
+*      p               pointer to array lvalue to be updated
+*      newlength       new .length property of array
+*      sizeelem        size of each element of array
+*      initsize        size of initializer
+*      ...             initializer
+*/
 extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) nothrow
 {
 	import core.stdc.string;
