@@ -2,6 +2,7 @@ module lifetime.class_;
 
 import lifetime.common;
 
+/// Allocate and initialise a class
 extern(C) Object _d_newclass(const TypeInfo_Class ti) 
 {
 	auto buff = lwdrInternal_allocBytes(ti.m_init.length);
@@ -10,6 +11,7 @@ extern(C) Object _d_newclass(const TypeInfo_Class ti)
 	return cast(Object)buff.ptr;
 }
 
+/// Finalize and deallocate a class
 extern(C) void _d_delclass(Object* o) nothrow @nogc
 {
     if(*o)
@@ -21,6 +23,7 @@ extern(C) void _d_delclass(Object* o) nothrow @nogc
     }
 }
 
+/// Allocate and initialise a class
 extern(C) Object _d_allocclass(TypeInfo_Class ti) 
 { 
 	auto buff = lwdrInternal_allocBytes(ti.m_init.length);
@@ -73,8 +76,7 @@ extern(C) void* _d_interface_cast(void* p, ClassInfo c) pure nothrow @nogc
     return _d_dynamic_cast(cast(Object)(p - pi.offset), c);
 }
 
-
-
+/// Cast an Object from one representation to another
 extern(C) void* _d_dynamic_cast(Object o, ClassInfo c) pure nothrow @nogc
 {
     debug(cast_) printf("_d_dynamic_cast(o = %p, c = '%.*s')\n", o, c.name);
@@ -90,6 +92,7 @@ extern(C) void* _d_dynamic_cast(Object o, ClassInfo c) pure nothrow @nogc
     return res;
 }
 
+/// Check if `c` is base of `oc`
 extern(C) int _d_isbaseof2(scope ClassInfo oc, scope const ClassInfo c, scope ref size_t offset) @safe pure nothrow @nogc
 {
     if (oc is c)
@@ -117,6 +120,7 @@ extern(C) int _d_isbaseof2(scope ClassInfo oc, scope const ClassInfo c, scope re
     return false;
 }
 
+/// Check if `c` is base of `oc`
 extern(C) int _d_isbaseof(scope ClassInfo oc, scope const ClassInfo c) @safe pure nothrow @nogc
 {
     if (oc is c)
