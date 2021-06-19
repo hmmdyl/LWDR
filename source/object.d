@@ -27,13 +27,17 @@ alias string  = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
+/// assert(bool exp) was called
 extern(C) void _d_assert(string f, uint l) { rtosbackend_assert(f, l); }
+/// assert(bool exp, string msg) was called
 extern(C) void _d_assert_msg(string msg, string f, uint l) { rtosbackend_assertmsg(msg, f, l); }
+/// A D array was incorrectly accessed
 extern(C) void _d_arraybounds(string f, size_t l) {rtosbackend_arrayBoundFailure(f, l);}
 
 extern(C) bool _xopEquals(in void*, in void*) { return false; }
 extern(C) int _xopCmp(in void*, in void*) { return 0; }
 
+/// Base Object class. All other classes implicitly inherit this.
 class Object 
 {
 	/// Convert Object to human readable string
@@ -45,12 +49,17 @@ class Object
 		return addr ^ (addr >>> 4);
 	}
 	
+    /// Compare against another object. NOT IMPLEMENTED!
 	int opCmp(Object o) { assert(false, "not implemented"); }
+    /// Check equivalence againt another object
 	bool opEquals(Object o) { return this is o; }
 	
+    /++ Object factory. NOT IMPLEMENTED!
+    ++/
 	static Object factory(string classname) { return null; }
 }
 
+/// Compare to objects
 bool opEquals(Object lhs, Object rhs)
 {
     // If aliased to the same object or both null => equal
@@ -84,6 +93,7 @@ bool opEquals(const Object lhs, const Object rhs)
     return opEquals(cast()lhs, cast()rhs);
 }
 
+/// Raw implementation of an interface
 struct Interface
 {
     TypeInfo_Class   classinfo;  /// .classinfo for this interface (not for containing class)
@@ -107,6 +117,7 @@ version(LWDR_DynamicArray)
     version = LWDR_INTERNAL_ti_next;
 }
 
+/// TypeInfo contains necessary RTTI for a target type.
 class TypeInfo 
 {
     /// Compares two instances for equality.
