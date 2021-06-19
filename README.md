@@ -30,7 +30,7 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 19. Static constructors and destructors
 20. Shared static constructors and destructors
 21. Module info
-22. There is no GC implenetation (primitive memory tracking is now available with `LWDR_TrackMem`, `RefCount!T` and `Unique!T` are now available)
+22. There is no GC implementation (primitive memory tracking is now available with `LWDR_TrackMem`, `RefCount!T` and `Unique!T` are now available)
 23. Delegates/closures
 24. Associative arrays
 25. Object monitors
