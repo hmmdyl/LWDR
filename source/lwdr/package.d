@@ -1,5 +1,7 @@
 module lwdr;
 
+public import lwdr.tracking;
+
 /// A static class by which to interface with core features of LWDR.
 static final class LWDR
 {
