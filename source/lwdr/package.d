@@ -1,7 +1,9 @@
 module lwdr;
 
+/// A static class by which to interface with core features of LWDR.
 static final class LWDR
 {
+	/// Finalise and deallocate object `obj`
 	static void free(ref Object obj) nothrow @nogc
 	{
 		import lifetime.class_;
@@ -10,6 +12,7 @@ static final class LWDR
 	}
 
 	version(LWDR_DynamicArray)
+	/// Finalise (if possible) and deallocate dynamic array `arr`
 	static void free(TArr : T[], T)(ref TArr arr)
 	{
 		import lifetime.array_;
@@ -17,6 +20,7 @@ static final class LWDR
 		arr = null;
 	}
 
+	/// Deallocate `ptr`
 	static void free(TPtr : T*, T)(ref TPtr ptr) 
 		if(!is(T == struct))
 	{
@@ -25,6 +29,7 @@ static final class LWDR
 		ptr = null;
 	}
 
+	/// Finalise (if possible) and deallocate struct pointed to by `ptr`.
 	static void free(TPtr : T*, T)(ref TPtr ptr) 
 		if(is(T == struct))
 	{
@@ -37,12 +42,17 @@ static final class LWDR
 
 	version(LWDR_TLS)
 	{
+		/++ Register the current thread with LWDR.
+		 + This will perform the necessary TLS allocations for this thread. ++/
 		static void registerCurrentThread() nothrow @nogc
 		{
 			import rt.sections;
 			initTLSRanges();
 		}
 
+		/++ Deregister the current thread from LWDR.
+		 + If this thread was not registered, it will cause unknown behaviour.
+		 + This will deallocate TLS memory for this thread. ++/
 		static void deregisterCurrentThread() nothrow @nogc
 		{
 			import rt.sections;
