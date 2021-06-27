@@ -18,7 +18,7 @@ struct Unique(T)
 {
 	@disable this(this); /// Disable copy semantics
 
-	private T payload; /// Payload
+	T payload; /// Payload
 	alias payload this;
 
 	/// Assign a payload to this unique pointer

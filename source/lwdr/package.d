@@ -5,11 +5,20 @@ public import lwdr.tracking;
 /// A static class by which to interface with core features of LWDR.
 static final class LWDR
 {
-	/// Finalise and deallocate object `obj`
+	/+/// Finalise and deallocate object `obj`
 	static void free(ref Object obj) nothrow @nogc
 	{
 		import lifetime.class_;
 		_d_delclass(&obj);
+		obj = null;
+	}+/
+	
+	static void free(T)(ref T obj) nothrow @nogc
+		if(is(T == class) || is(T == interface))
+	{
+		import lifetime.class_;
+		Object o = cast(Object)obj;
+		_d_delclass(&o);
 		obj = null;
 	}
 
