@@ -3,6 +3,8 @@
 ### Notice:
 This is not a port of druntime! This is a completely new implementation for low-resource environments. Normal D code may not work here!
 
+LWDR is now part of the [Symmetry Autumn of Code 2021](https://dlang.org/blog/2021/08/30/saoc-2021-projects/).
+
 ### What is this?
 This is the light weight D runtime - it is a barebones runtime targeting ARM Cortex CPUs. It works by abstracting hooks that the user can connect to their selected backend (be it an RTOS such as FreeRTOS, ChibiOS, etc or a minimalist system). 
 
