@@ -16,3 +16,4 @@ private template rootType(T)
 		alias rootType = inner!T;
 	}
 }
+

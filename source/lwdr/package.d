@@ -51,6 +51,20 @@ static final class LWDR
 		ptr = null;
 	}
 
+	version(LWDR_ManualDelegate)
+	{
+		/++
+		Deallocate the context for a delegate. If the pointer isn't valid,
+		then no action is taken. Hence, it is safe to call this for all types
+		of delegate context types.
+		++/
+		static void freeDelegateContext(void* contextPtr)
+		{
+			import lifetime.delegate_;
+			freeDelegate(contextPtr);
+		}
+	}
+
 	version(LWDR_TLS)
 	{
 		/++ Register the current thread with LWDR.
