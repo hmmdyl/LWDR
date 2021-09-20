@@ -29,6 +29,7 @@ struct LLArray
 		LWDR.free(cast(size_t[])items);
 	}
 
+	/// Add a pointer to the list. Returns a boolean indicating success of the addition.
 	bool add(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
@@ -39,6 +40,7 @@ struct LLArray
 		return false;
 	}
 
+	/// Check if pointer is in list. Returns true if pointer is present, false if not.
 	bool has(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
@@ -49,6 +51,7 @@ struct LLArray
 		return false;
 	}
 
+	/// Remove a pointer from the list and set it to null. Returns true if the pointer is in the list and was nullified, false if not.
 	bool invalidate(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
@@ -59,6 +62,7 @@ struct LLArray
 		return false;
 	}
 
+	/// Get an unsafe, unsynchronised range over the pointers.
 	auto unsafeRange() nothrow
 	{
 		return Range(items);

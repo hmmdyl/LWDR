@@ -6,14 +6,15 @@ import lwdr.tracking;
 version(LWDR_ManualDelegate):
 
 version(LWDR_ManualDelegate_16Dels)
-	private enum numDelegatesTrack = 16;
+	private enum numDelegatesTrack = 16; // Can track 16 delegate contexts, maximum
 version(LWDR_ManualDelegate_32Dels)
-	private enum numDelegatesTrack = 32;
+	private enum numDelegatesTrack = 32; // Can track 32 delegate contexts, maximum
 version(LWDR_ManualDelegate_64Dels)
-	private enum numDelegatesTrack = 64;
+	private enum numDelegatesTrack = 64; // Can track 64 delegate contexts, maximum
 else
-	private enum numDelegatesTrack = 8;
+	private enum numDelegatesTrack = 8; // Can track 8 delegate contexts, maximum
 
+/// Keeps track of delegate context allocations
 private __gshared LLArray delegateContextAllocations;
 
 /++
@@ -25,7 +26,7 @@ extern(C) void* _d_allocmemory(size_t sz) @trusted
 {
 	void* ptr = lwdrInternal_alloc(sz);
 	bool added = delegateContextAllocations.add(ptr);
-	assert(added); // TODO, depending on policy, extend list or terminate
+	assert(added); // Panic if out of room to store the context
 	return ptr;
 }
 
@@ -43,11 +44,13 @@ void freeDelegate(void* contextPtr) @trusted nothrow
 	}
 }
 
+/// INTERNAL LWDR USE! Allocates the book keeping system for delegate context allocations.
 void __lwdr_initLifetimeDelegate() @system nothrow
 {
 	delegateContextAllocations = LLArray(numDelegatesTrack);
 }
 
+/// INTERNAL LWDR USE! Deallocates the book keeping system and any residual contexts.
 void __lwdr_deinitLifetimeDelegate() @system nothrow
 {
 	foreach(ref size_t ptr; delegateContextAllocations.unsafeRange)

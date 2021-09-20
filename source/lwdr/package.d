@@ -14,7 +14,7 @@ static final class LWDR
 		obj = null;
 	}+/
 	
-	static void free(T)(ref T obj) nothrow @nogc
+	static void free(T)(ref T obj) nothrow @nogc @trusted
 		if(is(T == class) || is(T == interface))
 	{
 		import lifetime.class_;
@@ -25,15 +25,15 @@ static final class LWDR
 
 	version(LWDR_DynamicArray)
 	/// Finalise (if possible) and deallocate dynamic array `arr`
-	static void free(TArr : T[], T)(ref TArr arr) nothrow
+	static void free(TArr : T[], T)(ref TArr arr) nothrow @trusted
 	{
 		import lifetime.array_;
-		_d_delarray_t(cast(void[]*)&arr, cast(TypeInfo_Struct)typeid(TArr));
+		_d_delarray_t(cast(void[]*)&arr, cast(TypeInfo_Struct)typeid(TArr)); // cast to TypeInfo_Struct is acceptable
 		arr = null;
 	}
 
 	/// Deallocate `ptr`
-	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow
+	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow @trusted
 		if(!is(T == struct))
 	{
 		import lifetime.common;
@@ -42,7 +42,7 @@ static final class LWDR
 	}
 
 	/// Finalise (if possible) and deallocate struct pointed to by `ptr`.
-	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow
+	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow @trusted
 		if(is(T == struct))
 	{
 		import lifetime.common;
@@ -59,12 +59,13 @@ static final class LWDR
 		then no action is taken. Hence, it is safe to call this for all types
 		of delegate context types.
 		++/
-		static void freeDelegateContext(void* contextPtr) @trusted nothrow
+		static void freeDelegateContext(void* contextPtr) nothrow @trusted
 		{
 			freeDelegate(contextPtr);
 		}
 	}
 
+	/// Start the runtime. Must be called once per process and before any runtime functionality is used!
 	static void startRuntime() @trusted nothrow
 	{
 		version(LWDR_ManualDelegate)
@@ -73,6 +74,7 @@ static final class LWDR
 		}
 	}
 
+	/// Stop the runtime. Must be called once per process after all D code has exited.
 	static void stopRuntime() @trusted nothrow
 	{
 		version(LWDR_ManualDelegate)
@@ -85,7 +87,7 @@ static final class LWDR
 	{
 		/++ Register the current thread with LWDR.
 		 + This will perform the necessary TLS allocations for this thread. ++/
-		static void registerCurrentThread() nothrow 
+		static void registerCurrentThread() nothrow @trusted
 		{
 			import rt.sections;
 			initTLSRanges();
@@ -94,7 +96,7 @@ static final class LWDR
 		/++ Deregister the current thread from LWDR.
 		 + If this thread was not registered, it will cause unknown behaviour.
 		 + This will deallocate TLS memory for this thread. ++/
-		static void deregisterCurrentThread() nothrow
+		static void deregisterCurrentThread() nothrow @trusted
 		{
 			import rt.sections;
 			freeTLSRanges();
