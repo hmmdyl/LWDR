@@ -9,20 +9,27 @@ A contiguous array is preferred on embedded environments to prevent heap memory 
 ++/
 struct LLArray
 {
-	private shared size_t[] items;
+	private size_t[] items;
 	private enum size_t nullVal = 0;
 
-	this(size_t length)
+	this(size_t length) nothrow
 	{
-		items = new shared size_t[](length);
+		items = new size_t[](length);
 	}
 
-	~this()
+	~this() nothrow
 	{
+		if(items !is null)
+			dealloc;
+	}
+
+	void dealloc() nothrow
+	{
+		scope(exit) items = null;
 		LWDR.free(cast(size_t[])items);
 	}
 
-	shared bool add(void* ptr)
+	bool add(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
 		{
@@ -32,7 +39,7 @@ struct LLArray
 		return false;
 	}
 
-	shared bool has(void* ptr)
+	bool has(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
 		{
@@ -42,7 +49,7 @@ struct LLArray
 		return false;
 	}
 
-	shared bool invalidate(void* ptr)
+	bool invalidate(void* ptr) nothrow
 	{
 		foreach(i; 0 .. items.length)
 		{
@@ -50,5 +57,38 @@ struct LLArray
 			   return true;
 		}
 		return false;
+	}
+
+	auto unsafeRange() nothrow
+	{
+		return Range(items);
+	}
+
+	static struct Range
+	{
+		private size_t[] array;
+		private size_t index;
+
+		@disable this();
+
+		this(size_t[] arr) nothrow
+		{
+			this.array = arr;
+		}
+
+		@property bool empty() const nothrow
+		{
+			return array is null || index >= array.length;
+		}
+
+		ref size_t front() nothrow
+		{
+			return *(&array[index]);
+		}
+
+		void popFront() nothrow
+		{
+			index++;
+		}
 	}
 }

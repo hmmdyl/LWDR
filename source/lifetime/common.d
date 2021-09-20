@@ -3,7 +3,7 @@ module lifetime.common;
 public import lwdr.tracking;
 
 /// Deallocate heap memory
-extern (C) void _d_delmemory(void* *p)
+extern (C) void _d_delmemory(void* *p) nothrow
 {
     if (*p)
     {

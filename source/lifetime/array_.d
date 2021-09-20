@@ -83,21 +83,25 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) nothrow
 }
 
 /// Finalize the elements in array `p`
-void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
+void finalize_array(void* p, size_t size, const TypeInfo_Struct si) nothrow
 {
     // Due to the fact that the delete operator calls destructors
     // for arrays from the last element to the first, we maintain
     // compatibility here by doing the same.
+	if(si.dtor is null)
+		return;
+
     auto tsize = si.tsize;
     for (auto curP = p + size - tsize; curP >= p; curP -= tsize)
     {
         // call destructor
-        si.dtor(curP);
+        (cast(void function(void*) nothrow)si.dtor)(curP); // pretend to be nothrow
+		// TODO: depending on exception support flag, enforce nothrow or throw dtor in type info???
     }
 }
 
 /// Finalize (if possible) and deallocate target array `p`
-extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
+extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti) nothrow
 {
 	if(!p) return;
 

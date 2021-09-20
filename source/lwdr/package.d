@@ -1,5 +1,6 @@
 module lwdr;
 
+import lifetime.delegate_;
 public import lwdr.tracking;
 
 /// A static class by which to interface with core features of LWDR.
@@ -24,15 +25,15 @@ static final class LWDR
 
 	version(LWDR_DynamicArray)
 	/// Finalise (if possible) and deallocate dynamic array `arr`
-	static void free(TArr : T[], T)(ref TArr arr)
+	static void free(TArr : T[], T)(ref TArr arr) nothrow
 	{
 		import lifetime.array_;
-		_d_delarray_t(cast(void[]*)&arr, typeid(T));
+		_d_delarray_t(cast(void[]*)&arr, cast(TypeInfo_Struct)typeid(TArr));
 		arr = null;
 	}
 
 	/// Deallocate `ptr`
-	static void free(TPtr : T*, T)(ref TPtr ptr) 
+	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow
 		if(!is(T == struct))
 	{
 		import lifetime.common;
@@ -41,7 +42,7 @@ static final class LWDR
 	}
 
 	/// Finalise (if possible) and deallocate struct pointed to by `ptr`.
-	static void free(TPtr : T*, T)(ref TPtr ptr) 
+	static void free(TPtr : T*, T)(ref TPtr ptr) nothrow
 		if(is(T == struct))
 	{
 		import lifetime.common;
@@ -58,10 +59,25 @@ static final class LWDR
 		then no action is taken. Hence, it is safe to call this for all types
 		of delegate context types.
 		++/
-		static void freeDelegateContext(void* contextPtr)
+		static void freeDelegateContext(void* contextPtr) @trusted nothrow
 		{
-			import lifetime.delegate_;
 			freeDelegate(contextPtr);
+		}
+	}
+
+	static void startRuntime() @trusted nothrow
+	{
+		version(LWDR_ManualDelegate)
+		{
+			__lwdr_initLifetimeDelegate();
+		}
+	}
+
+	static void stopRuntime() @trusted nothrow
+	{
+		version(LWDR_ManualDelegate)
+		{
+			__lwdr_deinitLifetimeDelegate();
 		}
 	}
 
@@ -69,7 +85,7 @@ static final class LWDR
 	{
 		/++ Register the current thread with LWDR.
 		 + This will perform the necessary TLS allocations for this thread. ++/
-		static void registerCurrentThread() nothrow @nogc
+		static void registerCurrentThread() nothrow 
 		{
 			import rt.sections;
 			initTLSRanges();
@@ -78,10 +94,18 @@ static final class LWDR
 		/++ Deregister the current thread from LWDR.
 		 + If this thread was not registered, it will cause unknown behaviour.
 		 + This will deallocate TLS memory for this thread. ++/
-		static void deregisterCurrentThread() nothrow @nogc
+		static void deregisterCurrentThread() nothrow
 		{
 			import rt.sections;
 			freeTLSRanges();
 		}
 	}
 }
+
+/// Initialise LWDR. This forwards to `LWDR.startRuntime`. It is intended for external C code.
+extern(C) void lwdrStartRuntime() @system
+{ LWDR.startRuntime; }
+
+/// Terminate LWDR. This forwards to `LWDR.stopRuntime`. It is intended for external C code.
+extern(C) void lwdrStopRuntime() @system
+{ LWDR.stopRuntime; }
