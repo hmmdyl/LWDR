@@ -103,9 +103,9 @@ static final class LWDR
 }
 
 /// Initialise LWDR. This forwards to `LWDR.startRuntime`. It is intended for external C code.
-extern(C) void lwdrStartRuntime() @system
+extern(C) void lwdrStartRuntime() @system nothrow
 { LWDR.startRuntime; }
 
 /// Terminate LWDR. This forwards to `LWDR.stopRuntime`. It is intended for external C code.
-extern(C) void lwdrStopRuntime() @system
+extern(C) void lwdrStopRuntime() @system nothrow
 { LWDR.stopRuntime; }
