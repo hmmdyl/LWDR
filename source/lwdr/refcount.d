@@ -1,5 +1,7 @@
 module lwdr.refcount;
 
+pragma(LDC_no_moduleinfo);
+
 import lwdr : LWDR;
 import lwdr.tracking;
 

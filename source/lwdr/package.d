@@ -1,5 +1,7 @@
 module lwdr;
 
+pragma(LDC_no_moduleinfo);
+
 import lifetime.delegate_;
 public import lwdr.tracking;
 

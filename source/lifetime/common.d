@@ -1,5 +1,7 @@
 module lifetime.common;
 
+pragma(LDC_no_moduleinfo);
+
 public import lwdr.tracking;
 
 /// Deallocate heap memory

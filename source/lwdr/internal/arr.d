@@ -1,8 +1,11 @@
 module lwdr.internal.arr;
 
+pragma(LDC_no_moduleinfo);
+
 import lwdr;
 import core.atomic : cas, atomicLoad;
 
+pragma(LDC_no_typeinfo):
 /++
 For usage within LWDR only. This is mostly intended for book keeping of memory allocations.
 A contiguous array is preferred on embedded environments to prevent heap memory fragmentation.
@@ -14,7 +17,7 @@ struct LLArray
 
 	this(size_t length) nothrow
 	{
-		items = new size_t[](length);
+		//items = new size_t[](length);
 	}
 
 	~this() nothrow
@@ -26,7 +29,7 @@ struct LLArray
 	void dealloc() nothrow
 	{
 		scope(exit) items = null;
-		LWDR.free(cast(size_t[])items);
+		//LWDR.free(cast(size_t[])items);
 	}
 
 	/// Add a pointer to the list. Returns a boolean indicating success of the addition.
@@ -68,6 +71,7 @@ struct LLArray
 		return Range(items);
 	}
 
+	pragma(LDC_no_typeinfo):
 	static struct Range
 	{
 		private size_t[] array;

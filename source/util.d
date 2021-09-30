@@ -1,5 +1,7 @@
 module util;
 
+pragma(LDC_no_moduleinfo);
+
 int stringCmpInternal(scope const char[] s1, scope const char[] s2) @trusted {
 	immutable tlen = s1.length <= s2.length ? s1.length : s2.length;
 	foreach(const u; 0 .. tlen) {

@@ -1,5 +1,7 @@
 module rtoslink;
 
+pragma(LDC_no_moduleinfo);
+
 /++
 These are the basic hooks to be implemented in C/C++ land. LWDR will call
 these hooks depending on what is requested of the runtime by user code.

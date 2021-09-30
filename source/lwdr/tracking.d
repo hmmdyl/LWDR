@@ -1,5 +1,7 @@
 module lwdr.tracking;
 
+pragma(LDC_no_moduleinfo);
+
 import rtoslink;
 
 version(LWDR_TrackMem)

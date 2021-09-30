@@ -1,5 +1,7 @@
 module lifetime.array_;
 
+pragma(LDC_no_moduleinfo);
+
 import lifetime.common;
 
 /// Copy an array byte-by-byte from `from` to `to`.
@@ -21,6 +23,22 @@ extern(C) int _adEq2(void[] a1, void[] a2, TypeInfo ti)
     if(!ti.equals(&a1, &a2)) return 0;
 
     return 1;
+}
+
+/// Copy items from one slice into another
+extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t srclen, size_t elemsz)
+{
+	auto d = cast(ubyte*) dst;
+	auto s = cast(ubyte*) src;
+	auto len = dstlen * elemsz;
+
+	while(len) 
+	{
+		*d = *s;
+		d++;
+		s++;
+		len--;
+	}
 }
 
 version(LWDR_DynamicArray):
@@ -112,22 +130,6 @@ extern(C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti) nothrow
 
 	lwdrInternal_free((*p).ptr);
 	*p = null;
-}
-
-/// Copy items from one slice into another
-extern(C) void _d_array_slice_copy(void* dst, size_t dstlen, void* src, size_t srclen, size_t elemsz)
-{
-	auto d = cast(ubyte*) dst;
-	auto s = cast(ubyte*) src;
-	auto len = dstlen * elemsz;
-
-	while(len) 
-	{
-		*d = *s;
-		d++;
-		s++;
-		len--;
-	}
 }
 
 /**

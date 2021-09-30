@@ -1,5 +1,7 @@
 module lifetime.item;
 
+pragma(LDC_no_moduleinfo);
+
 import lifetime.common;
 
 /**

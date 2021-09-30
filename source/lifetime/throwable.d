@@ -1,5 +1,7 @@
 module lifetime.throwable;
 
+pragma(LDC_no_moduleinfo);
+
 import lifetime.common;
 
 /// Delete a `Throwable` (exception handling support)

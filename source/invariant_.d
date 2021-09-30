@@ -1,5 +1,7 @@
 module invariant_;
 
+pragma(LDC_no_moduleinfo);
+
 /// Invokes o`s and derived classes invariant(s).
 extern(D) void _d_invariant(Object o)
 {

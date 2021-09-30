@@ -1,5 +1,7 @@
 module unwind;
 
+pragma(LDC_no_moduleinfo);
+
 // src:https://github.com/ldc-developers/druntime/blob/ldc/src/rt/unwind.d
 
 version(ARM)

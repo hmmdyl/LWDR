@@ -1,5 +1,7 @@
 module lifetime.padding;
 
+pragma(LDC_no_moduleinfo);
+
 package 
 {
 	enum : size_t 

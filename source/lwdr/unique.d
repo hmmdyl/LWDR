@@ -1,5 +1,7 @@
 module lwdr.unique;
 
+pragma(LDC_no_moduleinfo);
+
 import lwdr.util.traits;
 import lwdr : LWDR;
 

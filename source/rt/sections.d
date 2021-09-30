@@ -1,5 +1,7 @@
 module rt.sections;
 
+pragma(LDC_no_moduleinfo);
+
 import rtoslink;
 
 version(LWDR_TLS):
@@ -13,6 +15,8 @@ private {
 	}
 
 	/// Wrapper around TLS data defined by linker script
+	pragma(LDC_no_typeinfo)
+	{
 	struct TlsLinkerParams
 	{
 		void* data;
@@ -20,6 +24,7 @@ private {
 		void* bss;
 		size_t bssSize; 
 		size_t fullSize;
+	}
 	}
 
 	/// Get TLS data defined in linker script

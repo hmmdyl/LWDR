@@ -1,5 +1,7 @@
 module lifetime.class_;
 
+pragma(LDC_no_moduleinfo);
+
 import lifetime.common;
 
 /// Allocate and initialise a class

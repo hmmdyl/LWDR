@@ -2,20 +2,23 @@ module lwdr.internal.slinklist;
 
 import std.traits : isDynamicArray, isPointer;
 
-struct SLinkList(T)
+/++
+For usage within LWDR only. It is a singly-linked-list intended for book keeping memory allocations.
+It may grow infinitely, at the cost of undeterministic heap fragmentation.
+++/
+struct LLLinkedList
 {
-	private SLinkListNode* root;
+	private struct Node
+	{
+		void* item;
+		Node* next;
+	}
 
+	private Node* root;
 
-}
+	void add(void* ptr) nothrow
+	{
+		auto n = new Node(ptr);
 
-struct SLinkListNode(T)
-{
-	private SLinkListNode* next_;
-	@property SLinkListNode* next() { return next_; }
-
-	static if(is(T == class) || is(T == interface) || isPointer!T || isDynamicArray!T)
-		T item; // store reference
-	else
-		T* item; // store ptr to target
+	}
 }
