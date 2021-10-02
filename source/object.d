@@ -7,6 +7,8 @@ import lifetime.throwable;
 version(LWDR_DynamicArray)
 public import lifetime.array_ : _d_arraysetlengthTImpl;
 
+public import rt.arrcast : __ArrayCast;
+
 version (D_LP64)
 {
     alias size_t = ulong;
