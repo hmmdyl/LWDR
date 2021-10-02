@@ -1,13 +1,10 @@
 module lwdr.internal.unionset;
+version(LWDR_ModuleCtors):
+pragma(LDC_no_moduleinfo);
 
 import lwdr.tracking;
 
-version(LWDR_ModuleCtors):
-
-pragma(LDC_no_moduleinfo);
-
 @system @nogc nothrow:
-
 pragma(LDC_no_typeinfo)
 /++
 Notice: for internal LWDR use! This container matches a key-value pair.

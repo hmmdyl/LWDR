@@ -1,5 +1,7 @@
 module rt.sections_ldc;
 
+version(LWDR_ModuleCtors):
+
 version(LDC):
 pragma(LDC_no_moduleinfo);
 
@@ -10,6 +12,28 @@ private struct ModuleRef
 {
 	ModuleRef* next; /// next node in linked list
 	immutable(ModuleInfo)* moduleInfo;
+}
+
+auto allModules() nothrow
+{
+	static struct Modules
+	{
+		ModuleRef* current;
+		this(ModuleRef* c) nothrow { this.current = c; }
+
+		@property bool empty() const nothrow { return current !is null; }
+
+		immutable(ModuleInfo)* front() nothrow
+		{
+			return current.moduleInfo;
+		}
+
+		void popFront() nothrow
+		{
+			current = current.next;
+		}
+	}
+	return Modules(_Dmodule_ref);
 }
 
 void runCtors() nothrow
