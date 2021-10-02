@@ -21,4 +21,12 @@ void runCtors() nothrow
 		if(ct !is null)
 			ct();
 	} while((mref = mref.next) !is null);
+
+	mref = _Dmodule_ref;
+	do
+	{
+		auto ct = cast(void function() nothrow)mref.moduleInfo.tlsctor;
+		if(ct !is null)
+			ct();
+	} while((mref = mref.next) !is null);
 }

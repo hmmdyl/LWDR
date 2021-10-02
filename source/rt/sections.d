@@ -69,6 +69,8 @@ void freeTLSRanges() nothrow @nogc
 	rtosbackend_heapfreealloc(memory);
 }
 
+extern(C) int printf(const char* format, ...) nothrow @nogc;
+
 /// Get pointer to TLS memory for current thread.
 extern(C) void* __aeabi_read_tp() nothrow @nogc
 {
