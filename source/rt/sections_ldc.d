@@ -14,24 +14,21 @@ private struct ModuleRef
 	immutable(ModuleInfo)* moduleInfo;
 }
 
-auto allModules() nothrow
+auto allModules() nothrow @nogc
 {
 	static struct Modules
 	{
+		nothrow @nogc:
 		ModuleRef* current;
-		this(ModuleRef* c) nothrow { this.current = c; }
+		this(ModuleRef* c) { this.current = c; }
 
-		@property bool empty() const nothrow { return current !is null; }
+		@property bool empty() const { return current is null; }
 
-		immutable(ModuleInfo)* front() nothrow
-		{
-			return current.moduleInfo;
-		}
+		immutable(ModuleInfo)* front()
+		{ return current.moduleInfo; }
 
-		void popFront() nothrow
-		{
-			current = current.next;
-		}
+		void popFront()
+		{ current = current.next; }
 	}
 	return Modules(_Dmodule_ref);
 }

@@ -4,13 +4,13 @@ pragma(LDC_no_moduleinfo);
 
 import lwdr.tracking;
 
-@system @nogc nothrow:
 pragma(LDC_no_typeinfo)
 /++
 Notice: for internal LWDR use! This container matches a key-value pair.
 ++/
 struct LLUnionSet
 {
+	@system @nogc nothrow:
 	private struct Item 
 	{
 		size_t key, value;
@@ -25,7 +25,7 @@ struct LLUnionSet
 		items = cast(Item[])lwdrInternal_allocBytes(size);
 	}
 
-	~this()
+	~this() 
 	{
 		lwdrInternal_free(items.ptr);
 	}

@@ -70,6 +70,11 @@ static final class LWDR
 	/// Start the runtime. Must be called once per process and before any runtime functionality is used!
 	static void startRuntime() @trusted nothrow
 	{
+		version(LWDR_ModuleCtors)
+		{
+			import rt.moduleinfo;
+			__lwdr_moduleInfo_runModuleCtors();
+		}
 		version(LWDR_ManualDelegate)
 		{
 			__lwdr_initLifetimeDelegate();
@@ -79,6 +84,11 @@ static final class LWDR
 	/// Stop the runtime. Must be called once per process after all D code has exited.
 	static void stopRuntime() @trusted nothrow
 	{
+		version(LWDR_ModuleCtors)
+		{
+			import rt.moduleinfo;
+			__lwdr_moduleInfo_runModuleDtors();
+		}
 		version(LWDR_ManualDelegate)
 		{
 			__lwdr_deinitLifetimeDelegate();
@@ -93,6 +103,8 @@ static final class LWDR
 		{
 			import rt.sections;
 			initTLSRanges();
+			import rt.moduleinfo;
+			__lwdr_moduleInfo_runTlsCtors();
 		}
 
 		/++ Deregister the current thread from LWDR.
@@ -102,6 +114,8 @@ static final class LWDR
 		{
 			import rt.sections;
 			freeTLSRanges();
+			import rt.moduleinfo;
+			__lwdr_moduleInfo_runTlsDtors();
 		}
 	}
 }
