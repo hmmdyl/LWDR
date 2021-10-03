@@ -39,9 +39,7 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 26. Shared/synchronised
 
 ### Which compilers can be used?
-GDC works the best. 
-LDC can only be used for points 1-16. Exception handling does not work on LDC.
-DMD is not compatible.
+LDC works the best. DMD is not compatible. GDC will work but points 19-22 inclusive aren't and won't be supported in the immediate future.
 
 ### Has this been run on real hardware?
 Yes, as of currently it has been run on an STM32F407.
@@ -50,10 +48,9 @@ Yes, as of currently it has been run on an STM32F407.
 You have to hook the functions declared in `rtoslink.d` by implementing them in your MCU development environment. For example, with FreeRTOS, `rtosbackend_heapalloc` points to a wrapper in the C/C++ land that wraps `pvPortMalloc(...)`.
 
 ### Example usage
-First off, you will need an existing C/C++ project for your target microcontroller that builds with GCC and has some form of memory management (RTOS preferred). The C/C++ code can then call into your D functions (they must be marked `extern(C)`).
+First off, you will need an existing C/C++ project for your target microcontroller that has a C compiler and link, and has some form of memory management (RTOS preferred). The C/C++ code can then call into your D functions (they must be marked `extern(C)`).
 
-You will need to download GDC and compile it for the arm-none-eabi target. Once that is done, you can compile LWDR with your compatible D project. An example arm-none-eabi-gdc command is:
-`arm-none-eabi-gdc "myapp.d" "dwarf_eh.d" "memory.d" "object.d" "rtoslink.d" "unwind.d" "util.d" "invariant_.d" "arrimpl.d" -nophoboslib -nostdlib -ggdb`
+LWDR can be used with DUB and LDC. Simply add it to your dependencies. Build instructions are [here for DUB and LDC](https://github.com/hmmdyl/LWDR/wiki/Compiling-with-DUB-and-LDC).
 
 This will output a lib archive that you can link into your C/C++ project and execute on an MCU.
 
