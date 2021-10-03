@@ -26,17 +26,17 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 15. Dynamic array resizing (opt in by version `LWDR_DynamicArray`)
 16. Thread local storage (opt in by version `LWDR_TLS`)
 17. Delegates/closures (opt-in by version `LWDR_ManualDelegate`)
+18. Module constructors and destructors (opt-in by version `LWDR_ModuleCtors`)
+19. Static constructors and destructors (opt-in by version `LWDR_ModuleCtors`)
+20. Shared static constructors and destructor (opt-in by version `LWDR_ModuleCtors`)
+21. Module info (full-time, should be behind compile time version)
 
 ### What doesn't work?
-18. Exceptions and Throwables (experimental implementation was removed)
-19. Module constructors and destructors (*in progress*)
-20. Static constructors and destructors (*in progress*)
-21. Shared static constructors and destructors (*in progress*)
-22. Module info (*in progress*)
+22. Exceptions and Throwables (experimental implementation was removed)
 23. There is no GC implementation (primitive memory tracking is now available with `LWDR_TrackMem`, `RefCount!T` and `Unique!T` are now available)
 24. Associative arrays
-25. Object monitors
-26. Shared/synchronised
+25. Object monitors (Milestone 1, Task 2)
+26. Shared/synchronised (Milestone 1, Task 2)
 
 ### Which compilers can be used?
 LDC works the best. DMD is not compatible. GDC will work but points 19-22 inclusive aren't and won't be supported in the immediate future.
