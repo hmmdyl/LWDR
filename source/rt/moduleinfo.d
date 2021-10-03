@@ -53,7 +53,7 @@ void sortCtors() nothrow @nogc
 
 	void clearFlags(size_t* flags) @nogc nothrow
 	{
-		import core.stdc.string;
+		import util;
 		memset(flags, 0, flagbytes);
 	}
 

@@ -112,10 +112,10 @@ static final class LWDR
 		 + This will deallocate TLS memory for this thread. ++/
 		static void deregisterCurrentThread() nothrow @trusted
 		{
-			import rt.sections;
-			freeTLSRanges();
 			import rt.moduleinfo;
 			__lwdr_moduleInfo_runTlsDtors();
+			import rt.sections;
+			freeTLSRanges();
 		}
 	}
 }
