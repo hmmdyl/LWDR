@@ -39,7 +39,7 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 26. Shared/synchronised (Milestone 1, Task 2)
 
 ### Which compilers can be used?
-LDC works the best. DMD is not compatible. GDC will work but points 19-22 inclusive aren't and won't be supported in the immediate future.
+LDC works the best. DMD is not compatible. GDC will work but points 18-21 inclusive aren't supported.
 
 ### Has this been run on real hardware?
 Yes, as of currently it has been run on an STM32F407.
