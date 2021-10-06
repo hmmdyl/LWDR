@@ -601,6 +601,7 @@ enum
 * It provides access to various aspects of the module.
 * It is not generated for betterC.
 */
+version(LWDR_ModuleCtors)
 struct ModuleInfo
 {
     uint _flags; // MIxxxx

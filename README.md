@@ -29,7 +29,7 @@ This is the light weight D runtime - it is a barebones runtime targeting ARM Cor
 18. Module constructors and destructors (opt-in by version `LWDR_ModuleCtors`)
 19. Static constructors and destructors (opt-in by version `LWDR_ModuleCtors`)
 20. Shared static constructors and destructor (opt-in by version `LWDR_ModuleCtors`)
-21. Module info (full-time, should be behind compile time version)
+21. Module info (opt-in by version `LWDR_ModuleCtors`)
 
 ### What doesn't work?
 22. Exceptions and Throwables (experimental implementation was removed)
