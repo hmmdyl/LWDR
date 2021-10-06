@@ -13,8 +13,6 @@ version(LWDR_ModuleCtors_MinHeap)
 
 version(LWDR_ModuleCtors):
 
-//extern(C) int _d_eh_personality(int, void*, void*) { return 0; }
-
 private __gshared immutable(ModuleInfo*)[] modules;
 private __gshared immutable(ModuleInfo)*[] ctors;
 private __gshared immutable(ModuleInfo)*[] tlsctors;
