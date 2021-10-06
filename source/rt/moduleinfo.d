@@ -5,6 +5,12 @@ import rt.sections;
 import lwdr.tracking;
 import lwdr.internal.unionset;
 
+version(LWDR_ModuleCtors_MinHeap)
+{
+	version(LWDR_ModuleCtors) {}
+	else static assert(0, "LWDR_ModuleCtors_MinHeap requires LWDR_ModuleCtors to be defined.");
+}
+
 version(LWDR_ModuleCtors):
 
 //extern(C) int _d_eh_personality(int, void*, void*) { return 0; }
@@ -239,14 +245,27 @@ void sortCtors() nothrow @nogc
 		assert(false, "Module cycle deprecation 16211 warning!");
 }
 
-extern(C) int printf(const char* format, ...) nothrow @nogc;
+private void freeCtorLists() nothrow @nogc
+{
+	if(ctors.ptr)
+		lwdrInternal_free(ctors.ptr);
+	ctors = null;
+	if(tlsctors.ptr)
+		lwdrInternal_free(tlsctors.ptr);
+	tlsctors = null;
+}
 
 extern(C)
 {
 	void __lwdr_moduleInfo_runModuleCtors() nothrow @nogc
 	{
 		modules = getModules;
+
 		sortCtors;
+		version(LWDR_ModuleCtors_MinHeap)
+			scope(exit) 
+				freeCtorLists;
+
 		foreach(m; modules) // independent ctors
 		{
 			// must cast or won't call
@@ -262,6 +281,13 @@ extern(C)
 
 	void __lwdr_moduleInfo_runTlsCtors() nothrow @nogc
 	{
+		version(LWDR_ModuleCtors_MinHeap)
+		{
+			sortCtors;
+			scope(exit) 
+				freeCtorLists;
+		}
+
 		foreach(m; tlsctors)
 		{
 			auto tlsct = cast(void function() nothrow @nogc)m.tlsctor;
@@ -271,6 +297,13 @@ extern(C)
 
 	void __lwdr_moduleInfo_runTlsDtors() nothrow @nogc
 	{
+		version(LWDR_ModuleCtors_MinHeap)
+		{
+			sortCtors;
+			scope(exit) 
+				freeCtorLists;
+		}
+
 		foreach_reverse(m; tlsctors)
 		{
 			auto tlsdt = cast(void function() nothrow @nogc)m.tlsdtor;
@@ -280,17 +313,15 @@ extern(C)
 
 	void __lwdr_moduleInfo_runModuleDtors() nothrow @nogc
 	{
+		version(LWDR_ModuleCtors_MinHeap)
+			sortCtors;
+
+		scope(exit) freeCtorLists;
+
 		foreach_reverse(m; ctors)
 		{
 			auto dt = cast(void function() nothrow @nogc)m.dtor;
 			if(dt !is null) dt();
 		}
-
-		if(ctors.ptr)
-			lwdrInternal_free(ctors.ptr);
-		ctors = null;
-		if(tlsctors.ptr)
-			lwdrInternal_free(tlsctors.ptr);
-		tlsctors = null;
 	}
 }
