@@ -44,16 +44,18 @@ private {
 }
 
 /// TLS support stores its pointer at index 1 in the TCB (Thread Control Block)
-enum tlsPointerIndex = 1;
+enum tlsPointerIndex = 0;
 
-/// Initialise TLS memory for current thread
+/// Initialise TLS memory for current thread, return pointer for GC
 void[] initTLSRanges() nothrow @nogc
 {
 	TlsLinkerParams tls = getTlsLinkerParams;
-	void* memory = rtosbackend_heapalloc(tls.fullSize);
+	size_t trueSize = tls.fullSize;
+	void* memory = rtosbackend_heapalloc(trueSize);
 
 	import core.stdc.string : memcpy, memset;
 
+	memset(memory, 0, trueSize);
 	memcpy(memory, tls.data, tls.dataSize);
 	memset(memory + tls.dataSize, 0, tls.bssSize);
 
@@ -69,10 +71,9 @@ void freeTLSRanges() nothrow @nogc
 	rtosbackend_heapfreealloc(memory);
 }
 
-extern(C) int printf(const char* format, ...) nothrow @nogc;
-
-/// Get pointer to TLS memory for current thread.
+/// Get pointer to TLS memory for current thread. Called internally by compiler whenever a TLS variable is accessed.
 extern(C) void* __aeabi_read_tp() nothrow @nogc
 {
-	return rtosbackend_getTLSPointerCurrThread(tlsPointerIndex) - ARM_EABI_TCB_SIZE;
+	auto ret = rtosbackend_getTLSPointerCurrThread(tlsPointerIndex);
+	return ret;
 }
