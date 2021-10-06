@@ -1,7 +1,7 @@
 module rt.moduleinfo;
 pragma(LDC_no_moduleinfo):
 
-import rt.sections_ldc;
+import rt.sections;
 import lwdr.tracking;
 import lwdr.internal.unionset;
 

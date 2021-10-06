@@ -101,7 +101,7 @@ static final class LWDR
 		 + This will perform the necessary TLS allocations for this thread. ++/
 		static void registerCurrentThread() nothrow @trusted
 		{
-			import rt.sections;
+			import rt.tls;
 			initTLSRanges();
 			import rt.moduleinfo;
 			__lwdr_moduleInfo_runTlsCtors();
@@ -114,7 +114,7 @@ static final class LWDR
 		{
 			import rt.moduleinfo;
 			__lwdr_moduleInfo_runTlsDtors();
-			import rt.sections;
+			import rt.tls;
 			freeTLSRanges();
 		}
 	}
