@@ -127,3 +127,46 @@ extern(C) void lwdrStartRuntime() @system nothrow
 /// Terminate LWDR. This forwards to `LWDR.stopRuntime`. It is intended for external C code.
 extern(C) void lwdrStopRuntime() @system nothrow
 { LWDR.stopRuntime; }
+
+/++
+ + Mixin for the entry point of the application. Calls `startRuntime` and
+ + `registerCurrentThread` and the respective stop functions on `scope(exit)`.
+ +
+ + May be extended to contain more initialization in the future.
+ +
+ + Examples:
+ + ---
+ + extern(C) void myMain()
+ + {
+ +     mixin(LWDREntryPointMixin);
+ + }
+ + ---
+ +/
+enum LWDREntryPointMixin = q{
+    LWDR.startRuntime; // runs the shared static constructors
+    scope(exit) LWDR.stopRuntime; // runs the shared static destructors
+    LWDR.registerCurrentThread; 
+    scope(exit) LWDR.deregisterCurrentThread;
+};
+
+/++
+ + Mixin for the entry point of a secondary thread. Calls
+ + `registerCurrentThread` and the respective stop function on `scope(exit)`.
+ +
+ + May be extended to contain more initialization in the future.
+ +
+ + Don't combine this mixin with `LWDREntryPointMixin` as it already registers
+ + the thread.
+ +
+ + Examples:
+ + ---
+ + extern(C) void secondThreadEntryPoint()
+ + {
+ +     mixin(LWDRThreadEntryMixin);
+ + }
+ + ---
+ +/
+enum LWDRThreadEntryMixin = q{
+    LWDR.registerCurrentThread; 
+    scope(exit) LWDR.deregisterCurrentThread;
+};
