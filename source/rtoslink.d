@@ -34,4 +34,15 @@ these hooks depending on what is requested of the runtime by user code.
 
 	/// Called when LWDR wishes to terminate prematurely.
 	void rtosbackend_terminate();
+
+	version(LWDR_Sync)
+	{
+		void* rtosbackend_mutexInit();
+		void rtosbackend_mutexDestroy(void*);
+		void rtosbackend_mutexLock(void*);
+		void rtosbackend_mutexUnlock(void*);
+		int rtosbackend_mutexTryLock(void*);
+		void* rtosbackend_globalMutexInit();
+		void rtosbackend_globalMutexDestroy(void*);
+	}
 }

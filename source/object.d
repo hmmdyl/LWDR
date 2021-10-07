@@ -59,6 +59,17 @@ class Object
     /++ Object factory. NOT IMPLEMENTED!
     ++/
 	static Object factory(string classname) { return null; }
+
+    version(LWDR_Sync)
+	{
+        interface Monitor 
+	    {
+            /// Lock the monitor
+            void lock();
+            /// Unlock the monitor
+            void unlock();
+	    }
+	}
 }
 
 /// Compare to objects
