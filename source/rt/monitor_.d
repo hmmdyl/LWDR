@@ -3,6 +3,8 @@ module rt.monitor_;
 version(LDC)
 	pragma(LDC_no_moduleinfo);
 
+version(LWDR_Sync):
+
 import rtoslink;
 import lwdr.tracking;
 
@@ -76,7 +78,7 @@ private
 {
 	__gshared void* globalMutex;
 
-	@property ref shared(Monitor)* monitor(return Object o) pure nothrow @nogc
+	@property ref shared(Monitor*) monitor(return Object o) pure nothrow @nogc
 	{ return *cast(shared Monitor**)&o.__monitor; }
 
 	shared(Monitor)* getMonitor(Object o) pure @nogc
@@ -101,17 +103,17 @@ private
 		rtosbackend_mutexLock(globalMutex);
 		if(getMonitor(o) is null)
 		{
-			m.referenceCount = 1;
-			setMonitor(o, cast(shared)m);
+			monitor.referenceCount = 1;
+			setMonitor(o, cast(shared)monitor);
 			success = true;
 		}
 		rtosbackend_mutexUnlock(globalMutex);
 
 		if(success)
-			return cast(shared(Monitor)*)m;
+			return cast(shared(Monitor)*)monitor;
 		else
 		{
-			deleteMonitor(m);
+			deleteMonitor(monitor);
 			return getMonitor(o);
 		}
 	}
@@ -119,8 +121,8 @@ private
 	/// Deletes mutex and monitor
 	void deleteMonitor(Monitor* m) @nogc nothrow
 	{
-		rtosbackend_mutexDestroy(monitor.mutex);
-		lwdrInternal_free(monitor);
+		rtosbackend_mutexDestroy(m.mutex);
+		lwdrInternal_free(m);
 	}
 }
 

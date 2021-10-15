@@ -70,6 +70,11 @@ static final class LWDR
 	/// Start the runtime. Must be called once per process and before any runtime functionality is used!
 	static void startRuntime() @trusted nothrow
 	{
+		version(LWDR_Sync)
+		{
+			import rt.monitor_;
+			__lwdr_monitor_init;
+		}
 		version(LWDR_ModuleCtors)
 		{
 			import rt.moduleinfo;
@@ -92,6 +97,11 @@ static final class LWDR
 		version(LWDR_ManualDelegate)
 		{
 			__lwdr_deinitLifetimeDelegate();
+		}
+		version(LWDR_Sync)
+		{
+			import rt.monitor_;
+			__lwdr_monitor_deinit;
 		}
 	}
 

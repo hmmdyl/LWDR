@@ -23,42 +23,49 @@ class Mutex : Object.Monitor
 	private void* mutexHandle;
 
 	/// Constructor implementation
-	private mixin template Ctor()
-	{
-		mutexHandle = rtosbackend_mutexInit;
-		proxy.userMonitor = this;
-		this.__monitor = cast(void*)proxy;
-	}
+	private enum Ctor = q{
+	};
 
 	/// Initialise a new mutex object
 	this() @trusted nothrow @nogc
 	{
-		mixin(Ctor);
+		init();
 	}
 
 	/// ditto
 	shared this() @trusted nothrow @nogc
 	{
-		mixin(Ctor);
+		init();
+	}
+
+	private void init(this Q)() @trusted nothrow @nogc
+		if(is(Q == Mutex) || is(Q == shared Mutex))
+	{
+		static if(is(Q == shared Mutex))
+			mutexHandle = cast(shared void*)rtosbackend_mutexInit;
+		else
+			mutexHandle = rtosbackend_mutexInit;
+
+		proxy.userMonitor = this;
+		this.__monitor = cast(void*)&proxy;
 	}
 
 	/// Create mutex and assign it to the object's monitor. 
-	private mixin template ObjCtor()
-	{
+	private enum ObjCtor = q{
 		assert(obj !is null);
 		assert(obj.__monitor is null);
 		this();
-		obj.__monitor = cast(void*)proxy;
-	}
+		obj.__monitor = cast(void*)&proxy;
+	};
 
 	/// Create mutex and assign it to the object's monitor. 
-	this(Object o) @trusted nothrow @nogc
+	this(Object obj) @trusted nothrow @nogc
 	{
 		mixin(ObjCtor);
 	}
 
 	/// ditto
-	shared this(Object o) @trusted nothrow @nogc
+	shared this(Object obj) @trusted nothrow @nogc
 	{
 		mixin(ObjCtor);
 	}
@@ -84,7 +91,7 @@ class Mutex : Object.Monitor
 	final void lock_nothrow(this Q)() nothrow @trusted @nogc
 		if(is(Q == Mutex) || is(Q == shared Mutex))
 	{
-		rtosbackend_mutexLock(mutexHandle);
+		rtosbackend_mutexLock(cast(void*)mutexHandle);
 	}
 
 	/**
@@ -101,7 +108,7 @@ class Mutex : Object.Monitor
 	/// ditto
 	final void unlock_nothrow(this Q)() nothrow @trusted @nogc
 	{
-		rtosbackend_mutexUnlock(mutexHandle);
+		rtosbackend_mutexUnlock(cast(void*)mutexHandle);
 	}
 
 	/**
@@ -122,6 +129,6 @@ class Mutex : Object.Monitor
 	/// ditto
 	final bool tryLock_nothrow(this Q)() @trusted nothrow @nogc
 	{
-		return rtosbackend_mutexTryLock(void*) == 1; 
+		return rtosbackend_mutexTryLock(cast(void*)mutexHandle) == 1; 
 	}
 }
