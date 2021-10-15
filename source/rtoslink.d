@@ -37,12 +37,19 @@ these hooks depending on what is requested of the runtime by user code.
 
 	version(LWDR_Sync)
 	{
+		/// Called when LWDR wants to create a mutex.
 		void* rtosbackend_mutexInit();
+		/// Called when LWDR wants to destroy a mutex.
 		void rtosbackend_mutexDestroy(void*);
+		/// LWDR wants to lock a mutex (eg, via synchronized).
 		void rtosbackend_mutexLock(void*);
+		/// LWDR wants to unlock a mutex (eg, via synchronized).
 		void rtosbackend_mutexUnlock(void*);
+		/// Attempt to lock a mutex. Returns 0 if couldn't, 1 if locked.
 		int rtosbackend_mutexTryLock(void*);
+		/// LWDR stores a single, global mutex for its own implementation. This function creates it. Called on runtime start.
 		void* rtosbackend_globalMutexInit();
+		/// Destroy LWDR's global mutex. Called on runtime shutdown.
 		void rtosbackend_globalMutexDestroy(void*);
 	}
 }
