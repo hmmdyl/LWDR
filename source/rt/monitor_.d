@@ -55,7 +55,7 @@ extern(C) void _d_monitorexit(Object o)
 INTERNAL USE!
 Called during finalisation to remove monitor.
 ++/
-void _lwdr_monitorDelete(Object o)
+void _lwdr_monitorDelete(Object o) @nogc nothrow
 {
 	auto m = getMonitor(o);
 	if(m is null) 
@@ -81,10 +81,10 @@ private
 	@property ref shared(Monitor*) monitor(return Object o) pure nothrow @nogc
 	{ return *cast(shared Monitor**)&o.__monitor; }
 
-	shared(Monitor)* getMonitor(Object o) pure @nogc
+	shared(Monitor)* getMonitor(Object o) pure @nogc nothrow
 	{ return atomicLoad!(MemoryOrder.acq)(o.monitor); }
 
-	void setMonitor(Object o, shared(Monitor)* m) pure @nogc
+	void setMonitor(Object o, shared(Monitor)* m) pure @nogc nothrow
 	{ atomicStore!(MemoryOrder.rel)(o.monitor, m); }
 
 	/// Gets existing monitor, or assigns one.

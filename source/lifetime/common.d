@@ -64,11 +64,20 @@ extern(C) void rt_finalize(void* p, bool det = true, bool resetMemory = true) no
 				(cast(void function(Object) @nogc nothrow)c.destructor)(cast(Object)p);
 		}
 		while((c = c.base) !is null);
+	}
 
-		if(resetMemory)
-		{
-			p[0 .. pc.m_init.length] = (*pc).m_init[];
-		}
+    version(LWDR_Sync)
+	{
+        if(ppv[1])
+	    {
+            import rt.monitor_;
+            _lwdr_monitorDelete(cast(Object)p);
+	    }
+	}
+
+	if(resetMemory)
+	{
+		p[0 .. pc.m_init.length] = (*pc).m_init[];
 	}
 }
 
