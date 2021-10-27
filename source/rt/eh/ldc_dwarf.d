@@ -2,534 +2,536 @@ module rt.eh.ldc_dwarf;
 
 import unwind;
 import lwdr.tracking;
+import lifetime.class_ : _d_isbaseof;
 
-version (LDC)
-{
-    version (ARM)
-    {
-        version (iOS)
-            version = SjLj_Exceptions;
-        else
-            version = ARM_EABI_UNWINDER;
-    }
-}
+enum GNU_ARM_EABI_Unwinder = true;
 
-/* These are the register numbers for _Unwind_SetGR().
-* Hints for these can be found by looking at the EH_RETURN_DATA_REGNO macro in
-* GCC. If you have a native gcc you can try the following:
-*
-* #include <stdio.h>
-*
-* int main(int argc, char *argv[])
-* {
-*     printf("EH_RETURN_DATA_REGNO(0) = %d\n", __builtin_eh_return_data_regno(0));
-*     printf("EH_RETURN_DATA_REGNO(1) = %d\n", __builtin_eh_return_data_regno(1));
-*     return 0;
-* }
+/**
+* Declare all known and handled exception classes.
+* D exceptions -- "GNUCD\0\0\0".
+* C++ exceptions -- "GNUCC++\0"
+* C++ dependent exceptions -- "GNUCC++\x01"
 */
-version (X86_64)
+static if (GNU_ARM_EABI_Unwinder)
 {
-    enum eh_exception_regno = 0;
-    enum eh_selector_regno = 1;
-}
-else version (X86)
-{
-    enum eh_exception_regno = 0;
-    enum eh_selector_regno = 2;
-}
-else version (AArch64)
-{
-    enum eh_exception_regno = 0;
-    enum eh_selector_regno = 1;
-}
-else version (ARM)
-{
-    enum eh_exception_regno = 0;
-    enum eh_selector_regno = 1;
-}
-else version (PPC64)
-{
-    enum eh_exception_regno = 3;
-    enum eh_selector_regno = 4;
-}
-else version (PPC)
-{
-    enum eh_exception_regno = 3;
-    enum eh_selector_regno = 4;
-}
-else version (MIPS64)
-{
-    enum eh_exception_regno = 4;
-    enum eh_selector_regno = 5;
-}
-else version (MIPS32)
-{
-    enum eh_exception_regno = 4;
-    enum eh_selector_regno = 5;
+    enum _Unwind_Exception_Class gdcExceptionClass = "GNUCD\0\0\0";
+    enum _Unwind_Exception_Class gxxExceptionClass = "GNUCC++\0";
+    enum _Unwind_Exception_Class gxxDependentExceptionClass = "GNUCC++\x01";
 }
 else
 {
-    static assert(0, "Unknown EH register numbers for this architecture");
+    enum _Unwind_Exception_Class gdcExceptionClass =
+        (cast(_Unwind_Exception_Class)'G' << 56) |
+        (cast(_Unwind_Exception_Class)'N' << 48) |
+        (cast(_Unwind_Exception_Class)'U' << 40) |
+        (cast(_Unwind_Exception_Class)'C' << 32) |
+        (cast(_Unwind_Exception_Class)'D' << 24);
+
+    enum _Unwind_Exception_Class gxxExceptionClass =
+        (cast(_Unwind_Exception_Class)'G' << 56) |
+        (cast(_Unwind_Exception_Class)'N' << 48) |
+        (cast(_Unwind_Exception_Class)'U' << 40) |
+        (cast(_Unwind_Exception_Class)'C' << 32) |
+        (cast(_Unwind_Exception_Class)'C' << 24) |
+        (cast(_Unwind_Exception_Class)'+' << 16) |
+        (cast(_Unwind_Exception_Class)'+' <<  8) |
+        (cast(_Unwind_Exception_Class)0 <<  0);
+
+    enum _Unwind_Exception_Class gxxDependentExceptionClass =
+        gxxExceptionClass + 1;
 }
 
-extern (C)
+/**
+* Checks for GDC exception class.
+*/
+bool isGdcExceptionClass(_Unwind_Exception_Class c) @nogc
 {
-    int _d_isbaseof(ClassInfo b, ClassInfo c);
-    void _d_createTrace(Throwable o, void* context);
-}
-
-private _Unwind_Ptr readUnaligned(T, bool consume)(ref const(ubyte)* p)
-{
-    version (X86)         enum hasUnalignedLoads = true;
-    else version (X86_64) enum hasUnalignedLoads = true;
-    else                  enum hasUnalignedLoads = false;
-
-    static if (hasUnalignedLoads)
+    static if (GNU_ARM_EABI_Unwinder)
     {
-        T value = *cast(T*) p;
+        return c[0] == gdcExceptionClass[0]
+            && c[1] == gdcExceptionClass[1]
+            && c[2] == gdcExceptionClass[2]
+            && c[3] == gdcExceptionClass[3]
+            && c[4] == gdcExceptionClass[4]
+            && c[5] == gdcExceptionClass[5]
+            && c[6] == gdcExceptionClass[6]
+            && c[7] == gdcExceptionClass[7];
     }
     else
     {
-        import core.stdc.string : memcpy;
-        T value = void;
-        memcpy(&value, p, T.sizeof);
+        return c == gdcExceptionClass;
     }
-
-    static if (consume)
-        p += T.sizeof;
-    return cast(_Unwind_Ptr) value;
 }
 
-/* High 4 bytes = vendor, low 4 bytes = language
-* For us: "DMD\0D\0\0\0"
+/**
+* Checks for any C++ exception class.
 */
-enum _Unwind_Exception_Class dmdExceptionClass =
-(cast(_Unwind_Exception_Class)'D' << 56) |
-(cast(_Unwind_Exception_Class)'M' << 48) |
-(cast(_Unwind_Exception_Class)'D' << 40) |
-(cast(_Unwind_Exception_Class)'D' << 24);
+bool isGxxExceptionClass(_Unwind_Exception_Class c) @nogc
+{
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        return c[0] == gxxExceptionClass[0]
+            && c[1] == gxxExceptionClass[1]
+            && c[2] == gxxExceptionClass[2]
+            && c[3] == gxxExceptionClass[3]
+            && c[4] == gxxExceptionClass[4]
+            && c[5] == gxxExceptionClass[5]
+            && c[6] == gxxExceptionClass[6]
+            && (c[7] == gxxExceptionClass[7]
+                || c[7] == gxxDependentExceptionClass[7]);
+    }
+    else
+    {
+        return c == gxxExceptionClass
+            || c == gxxDependentExceptionClass;
+    }
+}
 
 /**
-* Wrap the unwinder's data with our own compiler specific struct
-* with our own data.
+* Checks for primary or dependent, but not that it is a C++ exception.
+*/
+bool isDependentException(_Unwind_Exception_Class c) @nogc
+{
+    static if (GNU_ARM_EABI_Unwinder)
+        return (c[7] == '\x01');
+    else
+        return (c & 1);
+}
+
+/**
+* A D exception object consists of a header, which is a wrapper
+* around an unwind object header with additional D specific
+* information, prefixed by the exception object itself.
 */
 struct ExceptionHeader
 {
-    Throwable object;                   // the thrown D object
-    _Unwind_Exception exception_object; // the unwinder's data
+    // Because of a lack of __aligned__ style attribute, our object
+    // and the unwind object are the first two fields.
+    static if (Throwable.alignof < _Unwind_Exception.alignof)
+        ubyte[_Unwind_Exception.alignof - Throwable.alignof] pad;
 
-    // Save info on the handler that was detected
-    int handler;                        // which catch
-    const(ubyte)* languageSpecificData; // Language Specific Data Area for function enclosing the handler
-    _Unwind_Ptr landingPad;             // pointer to catch code
+    // The object being thrown.  The compiled code expects this to
+    // be immediately before the generic exception header.
+    Throwable object;
+
+    // The generic exception header.
+    _Unwind_Exception unwindHeader;
+
+    static assert(unwindHeader.offsetof - object.offsetof == object.sizeof);
+
+    // Cache handler details between Phase 1 and Phase 2.
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        // Nothing here yet.
+    }
+    else
+    {
+        // Which catch was found.
+        int handler;
+
+        // Language Specific Data Area for function enclosing the handler.
+        const(ubyte)* languageSpecificData;
+
+        // Pointer to catch code.
+        _Unwind_Ptr landingPad;
+
+        // Canonical Frame Address (CFA) for the enclosing handler.
+        _Unwind_Word canonicalFrameAddress;
+    }
 
     // Stack other thrown exceptions in current thread through here.
     ExceptionHeader* next;
 
-    static ExceptionHeader* stack;      // thread local stack of chained exceptions
+    // Thread local stack of chained exceptions.
+    static ExceptionHeader* stack;
 
-    /* Pre-allocate storage for 1 instance per thread.
-	* Use calloc/free for multiple exceptions in flight.
-	* Does not use GC
-	*/
+    // Pre-allocate storage for 1 instance per thread.
+    // Use calloc/free for multiple exceptions in flight.
     static ExceptionHeader ehstorage;
 
-    /************
+    /**
 	* Allocate and initialize an ExceptionHeader.
-	* Params:
-	*  o = thrown object
-	* Returns:
-	*  allocated and initalized ExceptionHeader
 	*/
     static ExceptionHeader* create(Throwable o) @nogc
     {
         auto eh = &ehstorage;
-        if (eh.object)                  // if in use
+
+        // Check exception object in use.
+        if (eh.object)
         {
-            eh = cast(ExceptionHeader*)lwdrInternal_alloc(ExceptionHeader.sizeof);
+            eh = cast(ExceptionHeader*) lwdrInternal_alloc(ExceptionHeader.sizeof);
+            // Out of memory while throwing - not much else can be done.
             if (!eh)
-                terminate(__LINE__);              // out of memory while throwing - not much else can be done
+                   assert(false);
+                //terminate("out of memory", __LINE__);
         }
         eh.object = o;
-        eh.exception_object.exception_class = dmdExceptionClass;
-        debug (EH_personality) writeln("create(): %p", eh);
+
+        eh.unwindHeader.exception_class = gdcExceptionClass;
+
         return eh;
     }
 
-    /**********************
+    /**
 	* Free ExceptionHeader that was created by create().
-	* Params:
-	*  eh = ExceptionHeader to free
 	*/
-    static void free(ExceptionHeader* eh)
+    static void free(ExceptionHeader* eh) @nogc
     {
-        debug (EH_personality) writeln("free(%p)", eh);
-        /* Smite contents even if subsequently free'd,
-		* to ward off dangling pointer bugs.
-		*/
         *eh = ExceptionHeader.init;
         if (eh != &ehstorage)
             lwdrInternal_free(eh);
     }
 
-    /*************************
+    /**
 	* Push this onto stack of chained exceptions.
 	*/
-    void push()
+    void push() @nogc
     {
         next = stack;
         stack = &this;
     }
 
-    /************************
+    /**
 	* Pop and return top of chained exception stack.
 	*/
-    static ExceptionHeader* pop()
+    static ExceptionHeader* pop() @nogc
     {
         auto eh = stack;
         stack = eh.next;
         return eh;
     }
 
-    /*******************************
-	* Convert from pointer to exception_object to pointer to ExceptionHeader
-	* that it is embedded inside of.
-	* Params:
-	*  eo = pointer to exception_object field
-	* Returns:
-	*  pointer to ExceptionHeader that eo points into.
+    /**
+	* Save stage1 handler information in the exception object.
 	*/
-    static ExceptionHeader* toExceptionHeader(_Unwind_Exception* eo)
+    static void save(_Unwind_Exception* unwindHeader,
+                     _Unwind_Word cfa, int handler,
+                     const(ubyte)* lsda, _Unwind_Ptr landingPad) @nogc
+					 {
+						static if (GNU_ARM_EABI_Unwinder)
+						{
+							unwindHeader.barrier_cache.sp = cfa;
+							unwindHeader.barrier_cache.bitpattern[1] = cast(_uw)handler;
+							unwindHeader.barrier_cache.bitpattern[2] = cast(_uw)lsda;
+							unwindHeader.barrier_cache.bitpattern[3] = cast(_uw)landingPad;
+						}
+						else
+						{
+							ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+							eh.canonicalFrameAddress = cfa;
+							eh.handler = handler;
+							eh.languageSpecificData = lsda;
+							eh.landingPad = landingPad;
+						}
+					 }
+
+    /**
+	* Restore the catch handler data saved during phase1.
+	*/
+    static void restore(_Unwind_Exception* unwindHeader, out int handler,
+                        out const(ubyte)* lsda, out _Unwind_Ptr landingPad,
+                        out _Unwind_Word cfa) @nogc
+						{
+							static if (GNU_ARM_EABI_Unwinder)
+							{
+								cfa = unwindHeader.barrier_cache.sp;
+								handler = cast(int)unwindHeader.barrier_cache.bitpattern[1];
+								lsda = cast(ubyte*)unwindHeader.barrier_cache.bitpattern[2];
+								landingPad = cast(_Unwind_Ptr)unwindHeader.barrier_cache.bitpattern[3];
+							}
+							else
+							{
+								ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+								cfa = eh.canonicalFrameAddress;
+								handler = eh.handler;
+								lsda = eh.languageSpecificData;
+								landingPad = cast(_Unwind_Ptr)eh.landingPad;
+							}
+						}
+
+    /**
+	* Convert from pointer to unwindHeader to pointer to ExceptionHeader
+	* that it is embedded inside of.
+	*/
+    static ExceptionHeader* toExceptionHeader(_Unwind_Exception* exc) @nogc
     {
-        return cast(ExceptionHeader*)(cast(void*)eo - ExceptionHeader.exception_object.offsetof);
+        return cast(ExceptionHeader*)(cast(void*)exc - ExceptionHeader.unwindHeader.offsetof);
     }
 }
 
-/*******************************************
-* The first thing a catch handler does is call this.
-* Params:
-*      exceptionObject = value passed to catch handler by unwinder
-* Returns:
-*      object that was caught
+/**
+* Map to C++ std::type_info's virtual functions from D,
+* being careful to not require linking with libstdc++.
+* So it is given a different name.
 */
-// LDC: renamed from __dmd_begin_catch
-extern(C) Throwable _d_eh_enter_catch(_Unwind_Exception* exceptionObject)
+extern(C++) interface CxxTypeInfo
 {
-    version (ARM_EABI_UNWINDER)
-    {
-        _Unwind_Complete(exceptionObject);
-    }
-    ExceptionHeader *eh = ExceptionHeader.toExceptionHeader(exceptionObject);
-
-    auto o = eh.object;
-    // Remove our reference to the exception. We should not decrease its refcount,
-    // because we pass the object on to the caller.
-    eh.object = null;
-
-    // Pop off of chain
-    if (eh != ExceptionHeader.pop())
-        terminate(__LINE__);                      // eh should have been at top of stack
-
-    _Unwind_DeleteException(&eh.exception_object);      // done with eh
-    return o;
+    void dtor1();
+    void dtor2();
+    bool __is_pointer_p() const;
+    bool __is_function_p() const;
+    bool __do_catch(const CxxTypeInfo, void**, uint) const;
+    bool __do_upcast(const void*, void**) const;
 }
 
-/****************************************
-* Called when fibers switch contexts.
-* Params:
-*      newContext = stack to switch to
-* Returns:
-*      previous value of stack
+/**
+* Structure of a C++ exception, represented as a C structure.
+* See unwind-cxx.h for the full definition.
 */
-extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc
+struct CxaExceptionHeader
+{
+    union
+    {
+        CxxTypeInfo exceptionType;
+        void* primaryException;
+    }
+    void function(void*) exceptionDestructor;
+    void function() unexpectedHandler;
+    void function() terminateHandler;
+    CxaExceptionHeader* nextException;
+    int handlerCount;
+
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        CxaExceptionHeader* nextPropagatingException;
+        int propagationCount;
+    }
+    else
+    {
+        int handlerSwitchValue;
+        const(ubyte)* actionRecord;
+        const(ubyte)* languageSpecificData;
+        _Unwind_Ptr catchTemp;
+        void* adjustedPtr;
+    }
+
+    _Unwind_Exception unwindHeader;
+
+    /**
+	* There's no saving between phases, so only cache pointer.
+	* __cxa_begin_catch expects this to be set.
+	*/
+    static void save(_Unwind_Exception* unwindHeader, void* thrownPtr) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+            unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrownPtr;
+        else
+        {
+            auto eh = toExceptionHeader(unwindHeader);
+            eh.adjustedPtr = thrownPtr;
+        }
+    }
+
+    /**
+	* Get pointer to the thrown object if the thrown object type behind the
+	* exception is implicitly convertible to the catch type.
+	*/
+    static void* getAdjustedPtr(_Unwind_Exception* exc, CxxTypeInfo catchType)
+    {
+        void* thrownPtr;
+
+        // A dependent C++ exceptions is just a wrapper around the unwind header.
+        // A primary C++ exception has the thrown object located immediately after it.
+        if (isDependentException(exc.exception_class))
+            thrownPtr = toExceptionHeader(exc).primaryException;
+        else
+            thrownPtr = cast(void*)(exc + 1);
+
+        // Pointer types need to adjust the actual pointer, not the pointer that is
+        // the exception object.  This also has the effect of passing pointer types
+        // "by value" through the __cxa_begin_catch return value.
+        const throw_type = (cast(CxaExceptionHeader*)thrownPtr - 1).exceptionType;
+
+        if (throw_type.__is_pointer_p())
+            thrownPtr = *cast(void**)thrownPtr;
+
+        // Pointer adjustment may be necessary due to multiple inheritance
+        if (catchType is throw_type
+            || catchType.__do_catch(throw_type, &thrownPtr, 1))
+            return thrownPtr;
+
+        return null;
+    }
+
+    /**
+	* Convert from pointer to unwindHeader to pointer to CxaExceptionHeader
+	* that it is embedded inside of.
+	*/
+    static CxaExceptionHeader* toExceptionHeader(_Unwind_Exception* exc) @nogc
+    {
+        return cast(CxaExceptionHeader*)(exc + 1) - 1;
+    }
+}
+
+/**
+* Called if exception handling must be abandoned for any reason.
+*/
+private void terminate(string msg, uint line) @nogc
+{
+    assert(false);
+}
+
+/**
+* Called when fibers switch contexts.
+*/
+extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc
 {
     auto old = ExceptionHeader.stack;
     ExceptionHeader.stack = cast(ExceptionHeader*)newContext;
     return old;
 }
 
-
-/*********************
-* Called by D code to throw an exception via
-* ---
-* throw o;
-* ---
-* Params:
-*      o = Object to throw
-* Returns:
-*      doesn't return
-*/
-// LDC: renamed from _d_throwdwarf
-extern(C) void _d_throw_exception(Throwable o)
+extern(C) void* _d_eh_enter_catch(_Unwind_Exception* unwindHeader)
 {
-    ExceptionHeader *eh = ExceptionHeader.create(o);
+    return __gdc_begin_catch(unwindHeader);
+}
 
-    eh.push();  // add to thrown exception stack
-    debug (EH_personality) writeln("_d_throwdwarf: eh = %p, eh.next = %p", eh, eh.next);
+/**
+* Called before starting a catch.  Returns the exception object.
+*/
+extern(C) void* __gdc_begin_catch(_Unwind_Exception* unwindHeader)
+{
+    ExceptionHeader* header = ExceptionHeader.toExceptionHeader(unwindHeader);
 
-    /* Increment reference count if `o` is a refcounted Throwable
-	*/
-    auto refcount = o.refcount();
-    if (refcount)       // non-zero means it's refcounted
-        o.refcount() = refcount + 1;
+    void* objectp = cast(void*)header.object;
 
-    /* Called by unwinder when exception object needs destruction by other than our code.
-	*/
-    extern (C) static void exception_cleanup(_Unwind_Reason_Code reason, _Unwind_Exception* eo)
+    // Something went wrong when stacking up chained headers...
+    if (header != ExceptionHeader.pop())
+        terminate("catch error", __LINE__);
+
+    // Handling for this exception is complete.
+    _Unwind_DeleteException(&header.unwindHeader);
+
+    return objectp;
+}
+
+extern(C) void _d_throw_exception(Throwable object)
+{
+    _d_throw(object);
+}
+
+/**
+* Perform a throw, D style. Throw will unwind through this call,
+* so there better not be any handlers or exception thrown here.
+*/
+extern(C) void _d_throw(Throwable object)
+{
+    // If possible, avoid always allocating new memory for exception headers.
+    ExceptionHeader *eh = ExceptionHeader.create(object);
+
+    // Add to thrown exception stack.
+    eh.push();
+
+    // Called by unwinder when exception object needs destruction by other than our code.
+    extern(C) void exception_cleanup(_Unwind_Reason_Code code, _Unwind_Exception* exc)
     {
-        debug (EH_personality) writeln("exception_cleanup()");
-        switch (reason)
-        {
-            case _URC_FATAL_PHASE1_ERROR:       // unknown error code
-            case _URC_FATAL_PHASE2_ERROR:       // probably corruption
-            default:                            // uh-oh
-                terminate(__LINE__);            // C++ calls terminate() instead
-                break;
+        // If we haven't been caught by a foreign handler, then this is
+        // some sort of unwind error.  In that case just die immediately.
+        // _Unwind_DeleteException in the HP-UX IA64 libunwind library
+        //  returns _URC_NO_REASON and not _URC_FOREIGN_EXCEPTION_CAUGHT
+        // like the GCC _Unwind_DeleteException function does.
+        if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
+            terminate("uncaught exception", __LINE__);
 
-            case _URC_FOREIGN_EXCEPTION_CAUGHT:
-            case _URC_NO_REASON:
-                auto eh = ExceptionHeader.toExceptionHeader(eo);
-                ExceptionHeader.free(eh);
-                break;
-        }
-
+        auto eh = ExceptionHeader.toExceptionHeader(exc);
+        ExceptionHeader.free(eh);
     }
 
-    eh.exception_object.exception_cleanup = &exception_cleanup;
+    eh.unwindHeader.exception_cleanup = &exception_cleanup;
 
-    //_d_createTrace(o, null);
+    // Runtime now expects us to do this first before unwinding.
+    
+	//_d_createTrace(eh.object, null);
 
-    version (SjLj_Exceptions)
-    {
-        auto r = _Unwind_SjLj_RaiseException(&eh.exception_object);
-    }
+    // We're happy with setjmp/longjmp exceptions or region-based
+    // exception handlers: entry points are provided here for both.
+    _Unwind_Reason_Code r = void;
+
+    version (GNU_SjLj_Exceptions)
+        r = _Unwind_SjLj_RaiseException(&eh.unwindHeader);
     else
+        r = _Unwind_RaiseException(&eh.unwindHeader);
+
+    // If code == _URC_END_OF_STACK, then we reached top of stack without finding
+    // a handler for the exception.  Since each thread is run in a try/catch,
+    // this oughtn't happen.  If code is something else, we encountered some sort
+    // of heinous lossage from which we could not recover.  As is the way of such
+    // things, almost certainly we will have crashed before now, rather than
+    // actually being able to diagnose the problem.
+    if (r == _URC_END_OF_STACK)
     {
-        auto r = _Unwind_RaiseException(&eh.exception_object);
+        __gdc_begin_catch(&eh.unwindHeader);
+        //_d_print_throwable(object);
+        terminate("uncaught exception", __LINE__);
     }
 
-    /* Shouldn't have returned, but if it did:
-	*/
-    switch (r)
-    {
-        case _URC_END_OF_STACK:
-            /* Unwound the stack without encountering a catch clause.
-			* In C++, this would mean call uncaught_exception().
-			* In D, this can happen only if `rt_trapExceptions` is cleared
-			* since otherwise everything is enclosed by a top-level
-			* try/catch.
-			*//**
-            As _d_print_throwable() itself may throw multiple times when calling core.demangle,
-            and with the uncaught exception still on the EH stack, this doesn't bode well with core.demangle's error recovery.
-            */
-            version (LDC)
-                _d_eh_enter_catch(&eh.exception_object);
-            else
-                __dmd_begin_catch(&eh.exception_object);
-            //_d_print_throwable(o);
-            //abort();
-            assert(0);
-
-        case _URC_FATAL_PHASE1_ERROR:
-            /* Unexpected error, likely some sort of corruption.
-			* In C++, terminate() would be called.
-			*/
-            terminate(__LINE__);                          // should never happen
-            assert(0);
-
-        case _URC_FATAL_PHASE2_ERROR:
-            /* Unexpected error. Program is in an unknown state.
-			* In C++, terminate() would be called.
-			*/
-            terminate(__LINE__);                          // should never happen
-            assert(0);
-
-        default:
-            terminate(__LINE__);                          // should never happen
-            assert(0);
-    }
+    terminate("unwind error", __LINE__);
 }
 
-
-version (ARM_EABI_UNWINDER)
+static if (GNU_ARM_EABI_Unwinder)
 {
-    /// Called by our compiler-generate code to resume unwinding after a finally
-    /// block (or dtor destruction block) has been run.
-    // Implemented in asm (ldc/eh_asm.S) to preserve core registers,
-    // declaration here for reference only
-    extern(C) void _d_eh_resume_unwind(void* ptr);
-
-    // Perform cleanups before resuming.  Can't call _Unwind_Resume
-    // because it expects core register state at callsite.
-    //
-    // Also, a workaround for ARM EABI unwinding.  When D catch
-    // handlers are merged by the LLVM inliner, the IR has a landing
-    // pad that claims it will handle multiple exception types, but
-    // then only handles one and falls into _d_eh_resume_unwind.  This
-    // call to _d_eh_resume_unwind has a landing pad with the correct
-    // exception handler, but gcc ARM EABI unwind implementation
-    // resumes in the next frame up and misses it. Other gcc
-    // unwinders, C++ Itanium and SjLj, handle this case fine by
-    // resuming in the current frame.  The workaround is to save IP so
-    // personality can resume in the current frame.
-    extern(C) _Unwind_Exception* _d_arm_eabi_end_cleanup(_Unwind_Exception* ptr, ptrdiff_t ip)
-    {
-        debug (EH_personality) writeln("  - Resume ip %p", ip);
-        // tell personality the real IP (cleanup_cache can be used
-        // however we like)
-        ptr.cleanup_cache.bitpattern[0] = ip;
-        return ptr;
-    }
-}
-
-
-/*****************************************
-* "personality" function, specific to each language.
-* This one, of course, is specific to DMD.
-* Params:
-*      ver = version must be 1
-*      actions = bitwise OR of the 4 actions _UA_xxx.
-*          _UA_SEARCH_PHASE means return _URC_HANDLER_FOUND if current frame has a handler,
-*              _URC_CONTINUE_UNWIND if not. Cannot be used with _UA_CLEANUP_PHASE.
-*          _UA_CLEANUP_PHASE means perform cleanup for current frame by calling nested functions
-*              and returning _URC_CONTINUE_UNWIND. Or, set up registers and IP for Landing Pad
-*              and return _URC_INSTALL_CONTEXT.
-*          _UA_HANDLER_FRAME means this frame was the one with the handler in Phase 1, and now
-*              it is Phase 2 and the handler must be run.
-*          _UA_FORCE_UNWIND means unwinding the stack for longjmp or thread cancellation. Run
-*              finally clauses, not catch clauses, finallys must end with call to _Uwind_Resume().
-*      exceptionClass = 8 byte value indicating type of thrown exception. If the low 4 bytes
-*          are "C++\0", it's a C++ exception.
-*      exceptionObject = language specific exception information
-*      context = opaque type of unwinder state information
-* Returns:
-*      reason code
-* See_Also:
-*      http://www.ucw.cz/~hubicka/papers/abi/node25.html
-*/
-
-version (ARM_EABI_UNWINDER)
-{
-    enum _Unwind_State
-    {
-        VIRTUAL_UNWIND_FRAME = 0,
-        UNWIND_FRAME_STARTING = 1,
-        UNWIND_FRAME_RESUME = 2,
-        ACTION_MASK = 3,
-        FORCE_UNWIND = 8,
-        END_OF_STACK = 16
-    }
-
-    enum
-    {
-        UNWIND_POINTER_REG = 12,
-        UNWIND_STACK_REG = 13
-    }
-
-    extern (C) _Unwind_Reason_Code _d_eh_personality(_Unwind_State state,
-													 _Unwind_Exception* exceptionObject, _Unwind_Context* context)
-    {
-        _Unwind_Action actions;
-        switch (state & _Unwind_State.ACTION_MASK) {
-            case _Unwind_State.VIRTUAL_UNWIND_FRAME:
-                actions = _UA_SEARCH_PHASE;
-                break;
-            case _Unwind_State.UNWIND_FRAME_STARTING:
-                actions = _UA_CLEANUP_PHASE;
-                if (!(state & _Unwind_State.FORCE_UNWIND) &&
-                    exceptionObject.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG)) {
-						actions |= _UA_HANDLER_FRAME;
-					}
-                break;
-            case _Unwind_State.UNWIND_FRAME_RESUME:
-                // return continueUnwind(exceptionObject, context);
-                //
-                // Can't do normal continue unwind because there
-                // might be a handler still in this frame.
-                // Starting again at saved IP instead.
-                _Unwind_SetIP(context, exceptionObject.cleanup_cache.bitpattern[0]);
-                goto case _Unwind_State.UNWIND_FRAME_STARTING;
-            default:
-                terminate(__LINE__);
-                assert(0);
-        }
-        actions |= state & _Unwind_State.FORCE_UNWIND;
-
-        // The dwarf unwinder assumes the context structure holds things like the
-        // function and LSDA pointers.  The ARM implementation caches these in
-        // the exception header (UCB).  To avoid rewriting everything we make a
-        // virtual scratch register point at the UCB.
-        _Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Word) exceptionObject);
-
-        const result = _d_eh_personality_common(actions, exceptionObject.exception_class, exceptionObject, context);
-
-        if (result == _URC_CONTINUE_UNWIND)
-            return continueUnwind(exceptionObject, context);
-        return result;
-    }
-
-    _Unwind_Reason_Code continueUnwind(_Unwind_Exception* exceptionObject, _Unwind_Context* context)
-    {
-        if (__gnu_unwind_frame(exceptionObject, context) != _URC_NO_REASON)
-            return _URC_FAILURE;
-        return _URC_CONTINUE_UNWIND;
-    }
+    enum personality_fn_attributes = "";//attribute("target", ("general-regs-only"));
 }
 else
 {
-    extern (C) _Unwind_Reason_Code _d_eh_personality(int ver, _Unwind_Action actions,
-													 _Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject,
-													 _Unwind_Context* context)
-    {
-        if (ver != 1)
-            return _URC_FATAL_PHASE1_ERROR;
-
-        return _d_eh_personality_common(actions, exceptionClass, exceptionObject, context);
-    }
+    enum personality_fn_attributes = "";
 }
 
-// LDC: generalized from __dmd_personality_v0
-extern (C) _Unwind_Reason_Code _d_eh_personality_common(_Unwind_Action actions,
-														_Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject,
-														_Unwind_Context* context)
+/**
+* Read and extract information from the LSDA (.gcc_except_table section).
+*/
+@personality_fn_attributes
+_Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class exceptionClass,
+                             _Unwind_Action actions, _Unwind_Exception* unwindHeader,
+                             _Unwind_Context* context, _Unwind_Word cfa,
+                             out _Unwind_Ptr landingPad, out int handler)
 {
-    version (LDC) {} else
+    // If no LSDA, then there are no handlers or cleanups.
+    if (lsda is null)
+        return CONTINUE_UNWINDING(unwindHeader, context);
+
+    // Parse the LSDA header
+    auto p = lsda;
+
+    auto Start = (context ? _Unwind_GetRegionStart(context) : 0);
+
+    // Find @LPStart, the base to which landing pad offsets are relative.
+    ubyte LPStartEncoding = *p++;
+    _Unwind_Ptr LPStart = 0;
+
+    if (LPStartEncoding != DW_EH_PE_omit)
+        LPStart = read_encoded_value(context, LPStartEncoding, &p);
+    else
+        LPStart = Start;
+
+    // Find @TType, the base of the handler and exception spec type data.
+    ubyte TTypeEncoding = *p++;
+    const(ubyte)* TType = null;
+
+    if (TTypeEncoding != DW_EH_PE_omit)
     {
-        if (ver != 1)
-			return _URC_FATAL_PHASE1_ERROR;
-    }
-    assert(context);
-
-    const(ubyte)* language_specific_data;
-    int handler;
-    _Unwind_Ptr landing_pad;
-
-    debug (EH_personality)
-    {
-        writeln("__dmd_personality_v0(actions = x%x, eo = %p, context = %p)", cast(int)actions, exceptionObject, context);
-        writeln("exceptionClass = x%08llx", exceptionClass);
-
-        if (exceptionClass == dmdExceptionClass)
+        static if (__traits(compiles, _TTYPE_ENCODING))
         {
-            auto eh = ExceptionHeader.toExceptionHeader(exceptionObject);
-            for (auto ehx = eh; ehx; ehx = ehx.next)
-                writeln(" eh: %p next=%014p lsda=%p '%.*s'", ehx, ehx.next, ehx.languageSpecificData, ehx.object.msg.length, ehx.object.msg.ptr);
+            // Older ARM EABI toolchains set this value incorrectly, so use a
+            // hardcoded OS-specific format.
+            TTypeEncoding = _TTYPE_ENCODING;
         }
+        auto TTbase = read_uleb128(&p);
+        TType = p + TTbase;
     }
 
-    language_specific_data = cast(const(ubyte)*)_Unwind_GetLanguageSpecificData(context);
-    debug (EH_personality) writeln("lsda = %p", language_specific_data);
+    // The encoding and length of the call-site table; the action table
+    // immediately follows.
+    ubyte CSEncoding = *p++;
+    auto CSTableSize = read_uleb128(&p);
+    const(ubyte)* actionTable = p + CSTableSize;
 
-    auto Start = _Unwind_GetRegionStart(context);
+    auto TTypeBase = base_of_encoded_value(TTypeEncoding, context);
 
-    /* Get instruction pointer (ip) at start of instruction that threw
-	*/
+    // Get instruction pointer (ip) at start of instruction that threw.
     version (CRuntime_Glibc)
     {
         int ip_before_insn;
-        // The instruction pointer must not be decremented when unwinding from a
-        // signal handler frame (asynchronous exception, also see
-        // etc.linux.memoryerror). So use _Unwind_GetIPInfo where available.
         auto ip = _Unwind_GetIPInfo(context, &ip_before_insn);
         if (!ip_before_insn)
             --ip;
@@ -539,766 +541,451 @@ extern (C) _Unwind_Reason_Code _d_eh_personality_common(_Unwind_Action actions,
         auto ip = _Unwind_GetIP(context);
         --ip;
     }
-    debug (EH_personality) writeln("ip = x%x", cast(int)(ip - Start));
-    debug (EH_personality) writeln("\tStart = %p, ipoff = %p, lsda = %p", Start, ip - Start, language_specific_data);
 
-    auto result = scanLSDA(language_specific_data, ip - Start, exceptionClass,
-						   (actions & _UA_FORCE_UNWIND) != 0,          // don't catch when forced unwinding
-						   (actions & _UA_SEARCH_PHASE) != 0,          // search phase is looking for handlers
-						   exceptionObject,
-						   landing_pad,
-						   handler);
-    landing_pad += Start;
+    bool saw_cleanup = false;
+    bool saw_handler = false;
+    const(ubyte)* actionRecord = null;
 
-    switch (result)
+    version (GNU_SjLj_Exceptions)
     {
-        case LsdaResult.notFound:
-            terminate(__LINE__);
-            assert(0);
-
-        case LsdaResult.foreign:
-            terminate(__LINE__);
-            assert(0);
-
-        case LsdaResult.corrupt:
-            terminate(__LINE__);
-            assert(0);
-
-        case LsdaResult.noAction:
-            debug (EH_personality) writeln("  no action");
+        // The given "IP" is an index into the call-site table, with two
+        // exceptions -- -1 means no-action, and 0 means terminate.
+        // But since we're using uleb128 values, we've not got random
+        // access to the array.
+        if (cast(int) ip <= 0)
+        {
             return _URC_CONTINUE_UNWIND;
-
-        case LsdaResult.cleanup:
-            debug (EH_personality) writeln("  cleanup");
-            if (actions & _UA_SEARCH_PHASE)
+        }
+        else
+        {
+            _uleb128_t CSLandingPad, CSAction;
+            do
             {
-                return _URC_CONTINUE_UNWIND;
+                CSLandingPad = read_uleb128(p);
+                CSAction = read_uleb128(p);
             }
-            break;
+            while (--ip);
 
-        case LsdaResult.handler:
-            debug (EH_personality) writeln("  handler");
-            assert(!(actions & _UA_FORCE_UNWIND));
-            if (actions & _UA_SEARCH_PHASE)
+            // Can never have null landing pad for sjlj -- that would have
+            // been indicated by a -1 call site index.
+            landingPad = CSLandingPad + 1;
+            if (CSAction)
+                actionRecord = actionTable + CSAction - 1;
+        }
+    }
+    else
+    {
+        // Search the call-site table for the action associated with this IP.
+        while (p < actionTable)
+        {
+            // Note that all call-site encodings are "absolute" displacements.
+            auto CSStart = read_encoded_value(null, CSEncoding, &p);
+            auto CSLen = read_encoded_value(null, CSEncoding, &p);
+            auto CSLandingPad = read_encoded_value(null, CSEncoding, &p);
+            auto CSAction = read_uleb128(&p);
+
+            // The table is sorted, so if we've passed the ip, stop.
+            if (ip < Start + CSStart)
+                p = actionTable;
+            else if (ip < Start + CSStart + CSLen)
             {
-                if (exceptionClass == dmdExceptionClass)
-                {
-                    version (ARM_EABI_UNWINDER)
-                    {
-                        exceptionObject.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
-                    }
-                    auto eh = ExceptionHeader.toExceptionHeader(exceptionObject);
-                    eh.handler = handler;
-                    eh.languageSpecificData = language_specific_data;
-                    eh.landingPad = landing_pad;
-                }
-                return _URC_HANDLER_FOUND;
+                if (CSLandingPad)
+                    landingPad = LPStart + CSLandingPad;
+                if (CSAction)
+                    actionRecord = actionTable + CSAction - 1;
+                break;
             }
-            break;
-        default:
-            assert(false);
+        }
     }
 
-    debug (EH_personality) writeln("  lsda = %p, landing_pad = %p, handler = %d", language_specific_data, landing_pad, handler);
-
-    // Figure out what to do when there are multiple exceptions in flight
-    if (exceptionClass == dmdExceptionClass)
+    if (landingPad == 0)
     {
-        auto eh = ExceptionHeader.toExceptionHeader(exceptionObject);
-        debug (EH_personality) writeln(" '%.*s' next = %p", eh.object.msg.length, eh.object.msg.ptr, eh.next);
-        auto currentLsd = language_specific_data;
+        // IP is present, but has a null landing pad.
+        // No cleanups or handlers to be run.
+    }
+    else if (actionRecord is null)
+    {
+        // If ip is present, has a non-null landing pad, and a null
+        // action table offset, then there are only cleanups present.
+        // Cleanups use a zero switch value, as set above.
+        saw_cleanup = true;
+    }
+    else
+    {
+        // Otherwise we have a catch handler or exception specification.
+        handler = actionTableLookup(actions, unwindHeader, actionRecord,
+                                    lsda, exceptionClass, TTypeBase,
+                                    TType, TTypeEncoding,
+                                    saw_handler, saw_cleanup);
+    }
+
+    // IP is not in table.  No associated cleanups.
+    if (!saw_handler && !saw_cleanup)
+        return CONTINUE_UNWINDING(unwindHeader, context);
+
+    if (actions & _UA_SEARCH_PHASE)
+    {
+        if (!saw_handler)
+            return CONTINUE_UNWINDING(unwindHeader, context);
+
+        // For domestic exceptions, we cache data from phase 1 for phase 2.
+        if (isGdcExceptionClass(exceptionClass))
+            ExceptionHeader.save(unwindHeader, cfa, handler, lsda, landingPad);
+
+        return _URC_HANDLER_FOUND;
+    }
+
+    return 0;
+}
+
+/**
+* Look up and return the handler index of the classType in Action Table.
+*/
+int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
+                      const(ubyte)* actionRecord, const(ubyte)* lsda,
+                      _Unwind_Exception_Class exceptionClass,
+                      _Unwind_Ptr TTypeBase, const(ubyte)* TType,
+                      ubyte TTypeEncoding,
+                      out bool saw_handler, out bool saw_cleanup)
+{
+    ClassInfo thrownType;
+    if (isGdcExceptionClass(exceptionClass))
+    {
+        thrownType = getClassInfo(unwindHeader, lsda);
+    }
+
+    while (1)
+    {
+        auto ap = actionRecord;
+        auto ARFilter = read_sleb128(&ap);
+        auto apn = ap;
+        auto ARDisp = read_sleb128(&ap);
+
+        if (ARFilter == 0)
+        {
+            // Zero filter values are cleanups.
+            saw_cleanup = true;
+        }
+        else if (actions & _UA_FORCE_UNWIND)
+        {
+            // During forced unwinding, we only run cleanups.
+        }
+        else if (ARFilter > 0)
+        {
+            // Positive filter values are handlers.
+            auto encodedSize = size_of_encoded_value(TTypeEncoding);
+
+            // ARFilter is the negative index from TType, which is where
+            // the ClassInfo is stored.
+            const(ubyte)* tp = TType - ARFilter * encodedSize;
+
+            auto entry = read_encoded_value_with_base(TTypeEncoding, TTypeBase, &tp);
+            ClassInfo ci = cast(ClassInfo)cast(void*)(entry);
+
+            // D does not have catch-all handlers, and so the following
+            // assumes that we will never handle a null value.
+            assert(ci !is null);
+
+            if (ci.classinfo is __cpp_type_info_ptr.classinfo
+                && isGxxExceptionClass(exceptionClass))
+            {
+                // catchType is the catch clause type_info.
+                auto catchType = cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
+                auto thrownPtr = CxaExceptionHeader.getAdjustedPtr(unwindHeader, catchType);
+
+                if (thrownPtr !is null)
+                {
+                    if (actions & _UA_SEARCH_PHASE)
+                        CxaExceptionHeader.save(unwindHeader, thrownPtr);
+                    saw_handler = true;
+                    return cast(int)ARFilter;
+                }
+            }
+            else if (isGdcExceptionClass(exceptionClass)
+                     && _d_isbaseof(thrownType, ci))
+            {
+                saw_handler = true;
+                return cast(int)ARFilter;
+            }
+            else
+            {
+                // ??? What to do about other GNU language exceptions.
+            }
+        }
+        else
+        {
+            // Negative filter values are exception specifications,
+            // which D does not use.
+            break;
+        }
+
+        if (ARDisp == 0)
+            break;
+        actionRecord = apn + ARDisp;
+    }
+
+    return 0;
+}
+
+/**
+* Look at the chain of inflight exceptions and pick the class type that'll
+* be looked for in catch clauses.
+*/
+ClassInfo getClassInfo(_Unwind_Exception* unwindHeader,
+                       const(ubyte)* currentLsd) @nogc
+					   {
+						ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+						// The first thrown Exception at the top of the stack takes precedence
+						// over others that are inflight, unless an Error was thrown, in which
+						// case, we search for error handlers instead.
+						Throwable ehobject = eh.object;
+						for (ExceptionHeader* ehn = eh.next; ehn; ehn = ehn.next)
+						{
+							const(ubyte)* nextLsd = void;
+							_Unwind_Ptr nextLandingPad = void;
+							_Unwind_Word nextCfa = void;
+							int nextHandler = void;
+
+							ExceptionHeader.restore(&ehn.unwindHeader, nextHandler, nextLsd, nextLandingPad, nextCfa);
+
+							// Don't combine when the exceptions are from different functions.
+							if (currentLsd != nextLsd)
+								break;
+
+							Error e = cast(Error)ehobject;
+							if (e is null || (cast(Error)ehn.object) !is null)
+							{
+								currentLsd = nextLsd;
+								ehobject = ehn.object;
+							}
+						}
+						return ehobject.classinfo;
+					   }
+
+/**
+* Called when the personality function has found neither a cleanup or handler.
+* To support ARM EABI personality routines, that must also unwind the stack.
+*/
+@personality_fn_attributes
+_Unwind_Reason_Code CONTINUE_UNWINDING(_Unwind_Exception* unwindHeader, _Unwind_Context* context)
+{
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
+            return _URC_FAILURE;
+    }
+    return _URC_CONTINUE_UNWIND;
+}
+
+/**
+* Using a different personality function name causes link failures
+* when trying to mix code using different exception handling models.
+*/
+version (GNU_SEH_Exceptions)
+{
+    enum PERSONALITY_FUNCTION = "__gdc_personality_imp";
+
+    extern(C) EXCEPTION_DISPOSITION __gdc_personality_seh0(void* ms_exc, void* this_frame,
+                                                           void* ms_orig_context, void* ms_disp)
+    {
+        return _GCC_specific_handler(ms_exc, this_frame, ms_orig_context,
+                                     ms_disp, &gdc_personality);
+    }
+}
+else version (GNU_SjLj_Exceptions)
+{
+    enum PERSONALITY_FUNCTION = "__gdc_personality_sj0";
+
+    private int __builtin_eh_return_data_regno(int x) { return x; }
+}
+else
+{
+    enum PERSONALITY_FUNCTION = "__gdc_personality_v0";
+}
+
+extern(C) _Unwind_Reason_Code _d_eh_personality(_Unwind_State state, _Unwind_Exception* unwindHeader, _Unwind_Context* context)
+{
+    return gdc_personality(state, unwindHeader, context);
+}
+
+/**
+* The "personality" function, specific to each language.
+*/
+static if (GNU_ARM_EABI_Unwinder)
+{
+    pragma(mangle, PERSONALITY_FUNCTION)
+		@personality_fn_attributes
+		extern(C) _Unwind_Reason_Code gdc_personality(_Unwind_State state,
+													  _Unwind_Exception* unwindHeader,
+													  _Unwind_Context* context)
+		{
+			_Unwind_Action actions;
+
+			switch (state & _US_ACTION_MASK)
+			{
+				case _US_VIRTUAL_UNWIND_FRAME:
+					// If the unwind state pattern is (_US_VIRTUAL_UNWIND_FRAME | _US_FORCE_UNWIND)
+					// then we don't need to search for any handler as it is not a real exception.
+					// Just unwind the stack.
+					if (state & _US_FORCE_UNWIND)
+						return CONTINUE_UNWINDING(unwindHeader, context);
+					actions = _UA_SEARCH_PHASE;
+					break;
+
+				case _US_UNWIND_FRAME_STARTING:
+					actions = _UA_CLEANUP_PHASE;
+					if (!(state & _US_FORCE_UNWIND)
+						&& unwindHeader.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG))
+						actions |= _UA_HANDLER_FRAME;
+					break;
+
+				case _US_UNWIND_FRAME_RESUME:
+					return CONTINUE_UNWINDING(unwindHeader, context);
+
+				default:
+					terminate("unwind error", __LINE__);
+			}
+			actions |= state & _US_FORCE_UNWIND;
+
+			// The dwarf unwinder assumes the context structure holds things like
+			// the function and LSDA pointers.  The ARM implementation caches these
+			// in the exception header (UCB).  To avoid rewriting everything we make
+			// the virtual IP register point at the UCB.
+			_Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Ptr)unwindHeader);
+
+			return __gdc_personality(actions, unwindHeader.exception_class,
+									 unwindHeader, context);
+		}
+}
+else
+{
+    pragma(mangle, PERSONALITY_FUNCTION)
+		extern(C) _Unwind_Reason_Code gdc_personality(int iversion,
+													  _Unwind_Action actions,
+													  _Unwind_Exception_Class exceptionClass,
+													  _Unwind_Exception* unwindHeader,
+													  _Unwind_Context* context)
+		{
+			// Interface version check.
+			if (iversion != 1)
+				return _URC_FATAL_PHASE1_ERROR;
+
+			return __gdc_personality(actions, exceptionClass, unwindHeader, context);
+		}
+}
+
+@personality_fn_attributes
+private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
+                                              _Unwind_Exception_Class exceptionClass,
+                                              _Unwind_Exception* unwindHeader,
+                                              _Unwind_Context* context)
+{
+    const(ubyte)* lsda;
+    _Unwind_Ptr landingPad;
+    _Unwind_Word cfa;
+    int handler;
+
+    // Shortcut for phase 2 found handler for domestic exception.
+    if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
+        && isGdcExceptionClass(exceptionClass))
+    {
+        ExceptionHeader.restore(unwindHeader, handler, lsda, landingPad, cfa);
+        // Shouldn't have cached a null landing pad in phase 1.
+        if (landingPad == 0)
+            terminate("unwind error", __LINE__);
+    }
+    else
+    {
+        lsda = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
+
+        static if (GNU_ARM_EABI_Unwinder)
+            cfa = _Unwind_GetGR(context, UNWIND_STACK_REG);
+        else
+            cfa = _Unwind_GetCFA(context);
+
+        auto result = scanLSDA(lsda, exceptionClass, actions, unwindHeader,
+                               context, cfa, landingPad, handler);
+
+        // Positive on handler found in phase 1, continue unwinding, or failure.
+        if (result)
+            return result;
+    }
+
+    // Unexpected negative handler, call terminate directly.
+    if (handler < 0)
+        terminate("unwind error", __LINE__);
+
+    // We can't use any of the deh routines with foreign exceptions,
+    // because they all expect unwindHeader to be an ExceptionHeader.
+    if (isGdcExceptionClass(exceptionClass))
+    {
+        // If there are any in-flight exceptions being thrown, chain our
+        // current object onto the end of the prevous object.
+        ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+        auto currentLsd = lsda;
         bool bypassed = false;
+
         while (eh.next)
         {
             ExceptionHeader* ehn = eh.next;
+            const(ubyte)* nextLsd = void;
+            _Unwind_Ptr nextLandingPad = void;
+            _Unwind_Word nextCfa = void;
+            int nextHandler = void;
+
+            ExceptionHeader.restore(&ehn.unwindHeader, nextHandler, nextLsd, nextLandingPad, nextCfa);
 
             Error e = cast(Error)eh.object;
             if (e !is null && !cast(Error)ehn.object)
             {
-                /* eh is an Error, ehn is not. Skip ehn.
-				*/
-                debug (EH_personality) writeln("bypass");
-                currentLsd = ehn.languageSpecificData;
-
-                // Continuing to construct the bypassed chain
+                // We found an Error, bypass the exception chain.
+                currentLsd = nextLsd;
                 eh = ehn;
                 bypassed = true;
                 continue;
             }
 
-            // Don't combine when the exceptions are from different functions
-            if (currentLsd != ehn.languageSpecificData)
-            {
-                debug (EH_personality) writeln("break: %p %p", currentLsd, ehn.languageSpecificData);
+            // Don't combine when the exceptions are from different functions.
+            if (currentLsd != nextLsd)
                 break;
-            }
 
-            else
+            // Add our object onto the end of the existing chain.
+            Throwable n = ehn.object;
+            while (n.next)
+                n = n.next;
+            n.next = eh.object;
+
+            // Replace our exception object with in-flight one
+            eh.object = ehn.object;
+            if (nextHandler != handler && !bypassed)
             {
-                debug (EH_personality) writeln("chain");
-                // Append eh's object to ehn's object chain
-                // And replace our exception object with in-flight one
-                eh.object = Throwable.chainTogether(ehn.object, eh.object);
-
-                if (ehn.handler != handler && !bypassed)
-                {
-                    handler = ehn.handler;
-
-                    eh.handler = handler;
-                    eh.languageSpecificData = language_specific_data;
-                    eh.landingPad = landing_pad;
-                }
+                handler = nextHandler;
+                ExceptionHeader.save(unwindHeader, cfa, handler, lsda, landingPad);
             }
 
-            // Remove ehn from threaded chain
+            // Exceptions chained, can now throw away the previous header.
             eh.next = ehn.next;
-            debug (EH_personality) writeln("delete %p", ehn);
-            _Unwind_DeleteException(&ehn.exception_object); // discard ehn
+            _Unwind_DeleteException(&ehn.unwindHeader);
         }
+
         if (bypassed)
         {
-            eh = ExceptionHeader.toExceptionHeader(exceptionObject);
+            eh = ExceptionHeader.toExceptionHeader(unwindHeader);
             Error e = cast(Error)eh.object;
             auto ehn = eh.next;
             e.bypassedException = ehn.object;
             eh.next = ehn.next;
-            _Unwind_DeleteException(&ehn.exception_object);
+            _Unwind_DeleteException(&ehn.unwindHeader);
         }
     }
 
-    // Set up registers and jump to cleanup or handler
-    _Unwind_SetGR(context, eh_exception_regno, cast(_Unwind_Ptr)exceptionObject);
-    _Unwind_SetGR(context, eh_selector_regno, handler);
-    _Unwind_SetIP(context, landing_pad);
+    // Set up registers and jump to cleanup or handler.
+    // For targets with pointers smaller than the word size, we must extend the
+    // pointer, and this extension is target dependent.
+    _Unwind_SetGR(context, 0,
+                  cast(_Unwind_Ptr)unwindHeader);
+    _Unwind_SetGR(context, 1, handler);
+    _Unwind_SetIP(context, landingPad);
 
     return _URC_INSTALL_CONTEXT;
-}
-
-/*************************************************
-* Look at the chain of inflight exceptions and pick the class type that'll
-* be looked for in catch clauses.
-* Params:
-*      exceptionObject = language specific exception information
-*      currentLsd = pointer to LSDA table
-* Returns:
-*      class type to look for
-*/
-ClassInfo getClassInfo(_Unwind_Exception* exceptionObject, const(ubyte)* currentLsd)
-{
-    ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(exceptionObject);
-    Throwable ehobject = eh.object;
-    debug (EH_personality) writeln("start: %p '%.*s'", ehobject, cast(int)ehobject.classinfo.info.name.length, ehobject.classinfo.info.name.ptr);
-    for (ExceptionHeader* ehn = eh.next; ehn; ehn = ehn.next)
-    {
-        // like __dmd_personality_v0, don't combine when the exceptions are from different functions
-        // (fixes issue 19831, exception thrown and caught while inside finally block)
-        if (currentLsd != ehn.languageSpecificData)
-        {
-            debug (EH_personality) writeln("break: %p %p", currentLsd, ehn.languageSpecificData);
-            break;
-        }
-
-        debug (EH_personality) writeln("ehn =   %p '%.*s'", ehn.object, cast(int)ehn.object.classinfo.info.name.length, ehn.object.classinfo.info.name.ptr);
-        Error e = cast(Error)ehobject;
-        if (e is null || (cast(Error)ehn.object) !is null)
-        {
-            ehobject = ehn.object;
-        }
-    }
-    debug (EH_personality) writeln("end  : %p", ehobject);
-    return ehobject.classinfo;
-}
-
-/******************************
-* Decode Unsigned LEB128.
-* Params:
-*      p = pointer to data pointer, *p is updated
-*      to point past decoded value
-* Returns:
-*      decoded value
-* See_Also:
-*      https://en.wikipedia.org/wiki/LEB128
-*/
-_uleb128_t uLEB128(const(ubyte)** p)
-{
-    auto q = *p;
-    _uleb128_t result = 0;
-    uint shift = 0;
-    while (1)
-    {
-        ubyte b = *q++;
-        result |= cast(_uleb128_t)(b & 0x7F) << shift;
-        if ((b & 0x80) == 0)
-            break;
-        shift += 7;
-    }
-    *p = q;
-    return result;
-}
-
-/******************************
-* Decode Signed LEB128.
-* Params:
-*      p = pointer to data pointer, *p is updated
-*      to point past decoded value
-* Returns:
-*      decoded value
-* See_Also:
-*      https://en.wikipedia.org/wiki/LEB128
-*/
-_sleb128_t sLEB128(const(ubyte)** p)
-{
-    auto q = *p;
-    ubyte b;
-
-    _sleb128_t result = 0;
-    uint shift = 0;
-    while (1)
-    {
-        b = *q++;
-        result |= cast(_sleb128_t)(b & 0x7F) << shift;
-        shift += 7;
-        if ((b & 0x80) == 0)
-            break;
-    }
-    if (shift < result.sizeof * 8 && (b & 0x40))
-        result |= -(cast(_sleb128_t)1 << shift);
-    *p = q;
-    return result;
-}
-
-enum
-{
-	DW_EH_PE_FORMAT_MASK    = 0x0F,
-	DW_EH_PE_APPL_MASK      = 0x70,
-	DW_EH_PE_indirect       = 0x80,
-
-	DW_EH_PE_omit           = 0xFF,
-	DW_EH_PE_ptr            = 0x00,
-	DW_EH_PE_uleb128        = 0x01,
-	DW_EH_PE_udata2         = 0x02,
-	DW_EH_PE_udata4         = 0x03,
-	DW_EH_PE_udata8         = 0x04,
-	DW_EH_PE_sleb128        = 0x09,
-	DW_EH_PE_sdata2         = 0x0A,
-	DW_EH_PE_sdata4         = 0x0B,
-	DW_EH_PE_sdata8         = 0x0C,
-
-	DW_EH_PE_absptr         = 0x00,
-	DW_EH_PE_pcrel          = 0x10,
-	DW_EH_PE_textrel        = 0x20,
-	DW_EH_PE_datarel        = 0x30,
-	DW_EH_PE_funcrel        = 0x40,
-	DW_EH_PE_aligned        = 0x50,
-}
-
-
-/**************************************************
-* Read and extract information from the LSDA (aka gcc_except_table section).
-* The dmd Call Site Table is structurally different from other implementations. It
-* is organized as nested ranges, and one ip can map to multiple ranges. The most
-* nested candidate is selected when searched. Other implementations have one candidate
-* per ip.
-* Params:
-*      lsda = pointer to LSDA table
-*      ip = offset from start of function at which exception happened
-*      exceptionClass = which language threw the exception
-*      cleanupsOnly = only look for cleanups
-*      preferHandler = if a handler encloses a cleanup, prefer the handler
-*      exceptionObject = language specific exception information
-*      landingPad = set to landing pad
-*      handler = set to index of which catch clause was matched
-* Returns:
-*      LsdaResult
-* See_Also:
-*      http://reverseengineering.stackexchange.com/questions/6311/how-to-recover-the-exception-info-from-gcc-except-table-and-eh-handle-sections
-*      http://www.airs.com/blog/archives/464
-*      https://anarcheuz.github.io/2015/02/15/ELF%20internals%20part%202%20-%20exception%20handling/
-*/
-
-LsdaResult scanLSDA(const(ubyte)* lsda, _Unwind_Ptr ip, _Unwind_Exception_Class exceptionClass,
-					bool cleanupsOnly,
-					bool preferHandler,
-					_Unwind_Exception* exceptionObject,
-					out _Unwind_Ptr landingPad, out int handler)
-{
-    auto p = lsda;
-    if (!p)
-        return LsdaResult.noAction;
-
-    _Unwind_Ptr dw_pe_value(ubyte pe)
-    {
-        switch (pe)
-        {
-            case DW_EH_PE_sdata2:   return readUnaligned!(short,  true)(p);
-            case DW_EH_PE_udata2:   return readUnaligned!(ushort, true)(p);
-            case DW_EH_PE_sdata4:   return readUnaligned!(int,    true)(p);
-            case DW_EH_PE_udata4:   return readUnaligned!(uint,   true)(p);
-            case DW_EH_PE_sdata8:   return readUnaligned!(long,   true)(p);
-            case DW_EH_PE_udata8:   return readUnaligned!(ulong,  true)(p);
-            case DW_EH_PE_sleb128:  return cast(_Unwind_Ptr) sLEB128(&p);
-            case DW_EH_PE_uleb128:  return cast(_Unwind_Ptr) uLEB128(&p);
-            case DW_EH_PE_ptr:      if (size_t.sizeof == 8)
-				goto case DW_EH_PE_udata8;
-			else
-				goto case DW_EH_PE_udata4;
-            default:
-                terminate(__LINE__);
-                return 0;
-        }
-    }
-
-    ubyte LPstart = *p++;
-
-    _Unwind_Ptr LPbase = 0;
-    if (LPstart != DW_EH_PE_omit)
-    {
-        LPbase = dw_pe_value(LPstart);
-    }
-
-    ubyte TType = *p++;
-    _Unwind_Ptr TTbase = 0;
-    _Unwind_Ptr TToffset = 0;
-    if (TType != DW_EH_PE_omit)
-    {
-        // Note in libsupc++ eh_personality says it is necessary to override
-        // type encoding generated by older ARM EABI toolchains
-        // (_GLIBCXX_OVERRIDE_TTYPE_ENCODING)
-        version (ARM_EABI_UNWINDER) version (linux)
-            TType = DW_EH_PE_pcrel | DW_EH_PE_indirect;
-
-        TTbase = uLEB128(&p);
-        TToffset = (p - lsda) + TTbase;
-    }
-    debug (EH_personality) writeln("  TType = x%x, TTbase = x%x", TType, cast(int)TTbase);
-
-    ubyte CallSiteFormat = *p++;
-
-    _Unwind_Ptr CallSiteTableSize = dw_pe_value(DW_EH_PE_uleb128);
-    debug (EH_personality) writeln("  CallSiteFormat = x%x, CallSiteTableSize = x%x", CallSiteFormat, cast(int)CallSiteTableSize);
-
-    _Unwind_Ptr ipoffset = ip - LPbase;
-    debug (EH_personality) writeln("ipoffset = x%x", cast(int)ipoffset);
-    bool noAction = false;
-    auto tt = lsda + TToffset;
-    const(ubyte)* pActionTable = p + CallSiteTableSize;
-
-    version (LDC)
-    {
-        // Returns false if a filter (handler < 0) is encountered (not supported).
-        bool finalize(_Unwind_Ptr LandingPad, _Unwind_Ptr ActionRecordPtr)
-        {
-            // If there is no landing pad for this part of the frame, continue with the next level.
-            if (!LandingPad)
-            {
-                noAction = true;
-                return true;
-            }
-
-            if (ActionRecordPtr)                // if saw a catch
-            {
-                if (cleanupsOnly)
-                {
-                    noAction = true;
-                    return true;
-                }
-
-                auto h = actionTableLookup(exceptionObject, cast(uint)ActionRecordPtr, pActionTable, tt, TType, exceptionClass, lsda);
-                if (h < 0)
-                {
-                    return false;
-                }
-
-                // The catch (or cleanup for h == 0) is good
-                noAction = false;
-                landingPad = LandingPad;
-                handler = h;
-            }
-            else                                // if saw a cleanup
-            {
-                noAction = false;
-                landingPad = LandingPad;
-            }
-
-            return true;
-        }
-    }
-
-    version (SjLj_Exceptions)
-    {
-        if (TType == DW_EH_PE_omit)
-        {
-            // Used for simple cleanup actions (finally, dtors) that don't care
-            // about exception type
-            tt = null;
-        }
-
-        if (ip < LPbase) // ipoffset is unsigned
-        {
-            noAction = true;
-        }
-        else if (ipoffset == 0)
-        {
-            // If ip is not present in the table, call terminate.
-            terminate(__LINE__);
-        }
-        else
-        {
-            _uleb128_t callsite_lp, callsite_action;
-            do
-            {
-                callsite_lp = uLEB128(&p);
-                callsite_action = uLEB128(&p);
-                debug (EH_personality)
-                {
-                    writeln(" XT: ipoffset = x%x, landing pad = x%x, action = x%x",
-							cast(int)ipoffset, cast(int)callsite_lp, cast(int)callsite_action);
-                }
-            }
-            while (--ipoffset);
-
-            const success = finalize(callsite_lp + 1, callsite_action);
-            if (!success)
-                return LsdaResult.corrupt;
-        }
-    }
-    else // !SjLj_Exceptions
-    {
-        while (1)
-        {
-            if (p >= pActionTable)
-            {
-                version (LDC)
-                {
-                    noAction = true;
-                    break;
-                }
-                else
-                {
-                    if (p == pActionTable)
-                        break;
-                    fprintf(stderr, "no Call Site Table\n");
-
-                    return LsdaResult.corrupt;
-                }
-            }
-
-            _Unwind_Ptr CallSiteStart = dw_pe_value(CallSiteFormat);
-            _Unwind_Ptr CallSiteRange = dw_pe_value(CallSiteFormat);
-            _Unwind_Ptr LandingPad    = dw_pe_value(CallSiteFormat);
-            _uleb128_t ActionRecordPtr = uLEB128(&p);
-
-            debug (EH_personality)
-            {
-                writeln(" XT: start = x%x, range = x%x, landing pad = x%x, action = x%x",
-						cast(int)CallSiteStart, cast(int)CallSiteRange, cast(int)LandingPad, cast(int)ActionRecordPtr);
-            }
-
-            if (ipoffset < CallSiteStart)
-            {
-                version (LDC)
-                {
-                    noAction = true;
-                }
-                break;
-            }
-
-            // The most nested entry will be the last one that ip is in
-            if (ipoffset < CallSiteStart + CallSiteRange)
-            {
-                debug (EH_personality) writeln("\tmatch");
-                version (LDC)
-                {
-                    const success = finalize(LandingPad, cast(_Unwind_Ptr) ActionRecordPtr);
-                    if (!success)
-                        return LsdaResult.corrupt;
-                    break;
-                }
-                else
-                {
-                    if (ActionRecordPtr)                // if saw a catch
-                    {
-                        if (cleanupsOnly)
-                            continue;                   // ignore catch
-
-                        auto h = actionTableLookup(exceptionObject, cast(uint)ActionRecordPtr, pActionTable, tt, TType, exceptionClass, lsda);
-                        if (h < 0)
-                        {
-                            fprintf(stderr, "negative handler\n");
-                            return LsdaResult.corrupt;
-                        }
-                        if (h == 0)
-                            continue;                   // ignore
-
-                        // The catch is good
-                        noAction = false;
-                        landingPad = LandingPad;
-                        handler = h;
-                    }
-                    else if (LandingPad)                // if saw a cleanup
-                    {
-                        if (preferHandler && handler)   // enclosing handler overrides cleanup
-                            continue;                   // keep looking
-                        noAction = false;
-                        landingPad = LandingPad;
-                        handler = 0;                    // cleanup hides the handler
-                    }
-                    else                                // take no action
-                        noAction = true;
-                }
-            }
-        }
-    } // !SjLj_Exceptions
-
-    if (noAction)
-    {
-        assert(!landingPad && !handler);
-        return LsdaResult.noAction;
-    }
-
-    if (landingPad)
-        return handler ? LsdaResult.handler : LsdaResult.cleanup;
-
-    return LsdaResult.notFound;
-}
-
-/********************************************
-* Look up classType in Action Table.
-* Params:
-*      exceptionObject = language specific exception information
-*      actionRecordPtr = starting index in Action Table + 1
-*      pActionTable = pointer to start of Action Table
-*      tt = pointer past end of Type Table
-*      TType = encoding of entries in Type Table
-*      exceptionClass = which language threw the exception
-*      lsda = pointer to LSDA table
-* Returns:
-*      - &gt;=1 means the handler index of the classType
-*      - 0 means classType is not in the Action Table
-*      - &lt;0 means corrupt
-*/
-int actionTableLookup(_Unwind_Exception* exceptionObject, uint actionRecordPtr, const(ubyte)* pActionTable,
-                      const(ubyte)* tt, ubyte TType, _Unwind_Exception_Class exceptionClass, const(ubyte)* lsda)
-{
-    debug (EH_personality)
-    {
-        writeln("actionTableLookup(actionRecordPtr = %d, pActionTable = %p, tt = %p)",
-				actionRecordPtr, pActionTable, tt);
-    }
-    assert(pActionTable < tt);
-
-    ClassInfo thrownType;
-    if (exceptionClass == dmdExceptionClass)
-    {
-        thrownType = getClassInfo(exceptionObject, lsda);
-    }
-
-    for (auto ap = pActionTable + actionRecordPtr - 1; 1; )
-    {
-        assert(pActionTable <= ap && ap < tt);
-
-        auto TypeFilter = sLEB128(&ap);
-        auto apn = ap;
-        auto NextRecordPtr = sLEB128(&ap);
-
-        debug (EH_personality) writeln(" at: TypeFilter = %d, NextRecordPtr = %d", cast(int)TypeFilter, cast(int)NextRecordPtr);
-
-        version (LDC)
-        {
-            // zero means cleanup
-            if (TypeFilter == 0)
-                return 0;
-        }
-        if (TypeFilter <= 0)                    // should never happen with DMD generated tables
-        {
-            return -1;                          // corrupt
-        }
-
-        /* TypeFilter is negative index from TToffset,
-		* which is where the ClassInfo is stored
-		*/
-        _Unwind_Ptr entry;
-        const(ubyte)* tt2;
-        switch (TType & DW_EH_PE_FORMAT_MASK)
-        {
-            case DW_EH_PE_sdata2:   entry = readUnaligned!(short,  false)(tt2 = tt - TypeFilter * 2); break;
-            case DW_EH_PE_udata2:   entry = readUnaligned!(ushort, false)(tt2 = tt - TypeFilter * 2); break;
-            case DW_EH_PE_sdata4:   entry = readUnaligned!(int,    false)(tt2 = tt - TypeFilter * 4); break;
-            case DW_EH_PE_udata4:   entry = readUnaligned!(uint,   false)(tt2 = tt - TypeFilter * 4); break;
-            case DW_EH_PE_sdata8:   entry = readUnaligned!(long,   false)(tt2 = tt - TypeFilter * 8); break;
-            case DW_EH_PE_udata8:   entry = readUnaligned!(ulong,  false)(tt2 = tt - TypeFilter * 8); break;
-            case DW_EH_PE_ptr:      if (size_t.sizeof == 8)
-				goto case DW_EH_PE_udata8;
-			else
-				goto case DW_EH_PE_udata4;
-            default:
-                //fprintf(stderr, "TType = x%x\n", TType);
-                return -1;      // corrupt
-        }
-        if (!entry)             // the 'catch all' type
-            return -1;          // corrupt: should never happen with DMD, which explicitly uses Throwable
-
-        switch (TType & DW_EH_PE_APPL_MASK)
-        {
-            case DW_EH_PE_absptr:
-                break;
-
-            case DW_EH_PE_pcrel:
-                entry += cast(_Unwind_Ptr)tt2;
-                break;
-
-            default:
-                return -1;
-        }
-        if (TType & DW_EH_PE_indirect)
-            entry = *cast(_Unwind_Ptr*)entry;
-
-        ClassInfo ci = cast(ClassInfo)cast(void*)(entry);
-        if (ci.classinfo is __cpp_type_info_ptr.classinfo)
-        {
-            version (CppRuntime_Gcc)
-            {
-                if (exceptionClass == cppExceptionClass || exceptionClass == cppExceptionClass1)
-                {
-                    // sti is catch clause type_info
-                    auto sti = cast(CppTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
-                    auto p = getCppPtrToThrownObject(exceptionObject, sti);
-                    if (p) // if found
-                    {
-                        auto eh = CppExceptionHeader.toExceptionHeader(exceptionObject);
-                        eh.thrownPtr = p;                   // for __cxa_begin_catch()
-                        return cast(int)TypeFilter;
-                    }
-                }
-            }
-        }
-        else if (exceptionClass == dmdExceptionClass && _d_isbaseof(thrownType, ci))
-            return cast(int)TypeFilter; // found it
-
-        if (!NextRecordPtr)
-            return 0;                   // catch not found
-
-        ap = apn + NextRecordPtr;
-    }
-    terminate(__LINE__);
-    assert(0);
-}
-
-enum LsdaResult
-{
-    notFound,   // ip was not found in the LSDA - an exception shouldn't have happened
-    foreign,    // found a result we cannot handle
-    corrupt,    // the tables are corrupt
-    noAction,   // found, but no action needed (i.e. no cleanup nor handler)
-    cleanup,    // cleanup found (i.e. finally or destructor)
-    handler,    // handler found (i.e. a catch)
-}
-
-void terminate(uint line) @nogc
-{
-    assert(false);
-}
-
-
-/****************************** C++ Support *****************************/
-
-version (CppRuntime_Gcc)
-{
-    enum _Unwind_Exception_Class cppExceptionClass =
-		(cast(_Unwind_Exception_Class)'G' << 56) |
-		(cast(_Unwind_Exception_Class)'N' << 48) |
-		(cast(_Unwind_Exception_Class)'U' << 40) |
-		(cast(_Unwind_Exception_Class)'C' << 32) |
-		(cast(_Unwind_Exception_Class)'C' << 24) |
-		(cast(_Unwind_Exception_Class)'+' << 16) |
-		(cast(_Unwind_Exception_Class)'+' <<  8) |
-		(cast(_Unwind_Exception_Class)0 <<  0);
-
-    enum _Unwind_Exception_Class cppExceptionClass1 = cppExceptionClass + 1;
-
-    /*****************************************
-	* Get Pointer to Thrown Object if type of thrown object is implicitly
-	* convertible to the catch type.
-	* Params:
-	*      exceptionObject = language specific exception information
-	*      sti = type of catch clause
-	* Returns:
-	*      null if not caught, pointer to thrown object if caught
-	*/
-    void* getCppPtrToThrownObject(_Unwind_Exception* exceptionObject, CppTypeInfo sti)
-    {
-        void* p;    // pointer to thrown object
-        if (exceptionObject.exception_class & 1)
-            p = CppExceptionHeader.toExceptionHeader(exceptionObject).ptr;
-        else
-            p = cast(void*)(exceptionObject + 1);           // thrown object is immediately after it
-
-        const tt = (cast(CppExceptionHeader*)p - 1).typeinfo;
-
-        if (tt.__is_pointer_p())
-            p = *cast(void**)p;
-
-        // Pointer adjustment may be necessary due to multiple inheritance
-        return (sti is tt || sti.__do_catch(tt, &p, 1)) ? p : null;
-    }
-
-    version (LDC)
-    {
-        import core.stdcpp.typeinfo : CppTypeInfo = type_info;
-    }
-    else
-    {
-        extern (C++)
-        {
-            /**
-			* Access C++ std::type_info's virtual functions from D,
-			* being careful to not require linking with libstd++
-			* or interfere with core.stdcpp.typeinfo.
-			* So, give it a different name.
-			*/
-            interface CppTypeInfo // map to C++ std::type_info's virtual functions
-            {
-                void dtor1();                           // consume destructor slot in vtbl[]
-                void dtor2();                           // consume destructor slot in vtbl[]
-                bool __is_pointer_p() const;
-                bool __is_function_p() const;
-                bool __do_catch(const CppTypeInfo, void**, uint) const;
-                bool __do_upcast(const void*, void**) const;
-            }
-        }
-    }
-
-    /// The C++ version of D's ExceptionHeader wrapper
-    struct CppExceptionHeader
-    {
-        union
-        {
-            CppTypeInfo typeinfo;                   // type that was thrown
-            void* ptr;                              // pointer to real exception
-        }
-        void* p1;                                   // unreferenced placeholders...
-        void* p2;
-        void* p3;
-        void* p4;
-        int i1;
-        int i2;
-        const(ubyte)* p5;
-        const(ubyte)* p6;
-        _Unwind_Ptr p7;
-        void* thrownPtr;                            // pointer to thrown object
-        _Unwind_Exception exception_object;         // the unwinder's data
-
-        /*******************************
-		* Convert from pointer to exception_object field to pointer to CppExceptionHeader
-		* that it is embedded inside of.
-		* Params:
-		*  eo = pointer to exception_object field
-		* Returns:
-		*  pointer to CppExceptionHeader that eo points into.
-		*/
-        static CppExceptionHeader* toExceptionHeader(_Unwind_Exception* eo)
-        {
-            return cast(CppExceptionHeader*)(eo + 1) - 1;
-        }
-    }
 }
