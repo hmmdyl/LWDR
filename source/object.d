@@ -36,6 +36,20 @@ extern(C) void _d_assert_msg(string msg, string f, uint l) { rtosbackend_assertm
 /// A D array was incorrectly accessed
 extern(C) void _d_arraybounds(string f, size_t l) {rtosbackend_arrayBoundFailure(f, l);}
 
+/// Called when an out of range slice of an array is created
+extern(C) void _d_arraybounds_slice(string file, uint line, size_t, size_t, size_t)
+{
+    // Ignore additional information for now
+    _d_arraybounds(file, line);
+}
+
+/// Called when an out of range array index is accessed
+extern(C) void _d_arraybounds_index(string file, uint line, size_t, size_t)
+{
+    // Ignore additional information for now
+    _d_arraybounds(file, line);
+}
+
 extern(C) bool _xopEquals(in void*, in void*) { return false; }
 extern(C) int _xopCmp(in void*, in void*) { return 0; }
 
