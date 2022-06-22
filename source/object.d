@@ -4,8 +4,10 @@ import util;
 import rtoslink;
 import lifetime.throwable;
 
+
+
 version(LWDR_DynamicArray)
-public import lifetime.array_ : _d_arraysetlengthTImpl;
+public import lifetime.array_ : _d_arraysetlengthTImpl, _d_newarrayU;
 
 public import rt.arrcast : __ArrayCast;
 
@@ -29,29 +31,74 @@ alias string  = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
+private U[] _dup(T, U)(T[] a) // pure nothrow depends on postblit
+{
+    if (__ctfe)
+    {
+        static if (is(T : void))
+            assert(0, "Cannot dup a void[] array at compile time.");
+        else
+        {
+            U[] res;
+            foreach (ref e; a)
+                res ~= e;
+            return res;
+        }
+    }
+
+    import core.stdc.string : memcpy;
+
+    void[] arr = _d_newarrayU(typeid(T[]), a.length);
+    memcpy(arr.ptr, cast(const(void)*)a.ptr, T.sizeof * a.length);
+    auto res = *cast(U[]*)&arr;
+
+    static if (__traits(hasPostblit, T))
+        _doPostblit(res);
+    return res;
+}
+
+@property T[] dup(T)(const(T)[] a)
+    if (is(const(T) : T))
+{
+    return _dup!(const(T), T)(a);
+}
+
+
+/// Provide the .idup array property.
+@property immutable(T)[] idup(T)(T[] a)
+{
+    static assert(is(T : immutable(T)), "Cannot implicitly convert type "~T.stringof~
+                  " to immutable in idup.");
+    return _dup!(T, immutable(T))(a);
+}
+
+/// ditto
+@property immutable(T)[] idup(T:void)(const(T)[] a)
+{
+    return a.dup;
+}
+
+
+
 /// assert(bool exp) was called
 extern(C) void _d_assert(string f, uint l) { rtosbackend_assert(f, l); }
 /// assert(bool exp, string msg) was called
 extern(C) void _d_assert_msg(string msg, string f, uint l) { rtosbackend_assertmsg(msg, f, l); }
 /// A D array was incorrectly accessed
 extern(C) void _d_arraybounds(string f, size_t l) {rtosbackend_arrayBoundFailure(f, l);}
+//final switch (available as assert is implemented)
+public import core.internal.switch_ : __switch_error;
 
-/// Called when an out of range slice of an array is created
-extern(C) void _d_arraybounds_slice(string file, uint line, size_t, size_t, size_t)
-{
-    // Ignore additional information for now
-    _d_arraybounds(file, line);
-}
-
-/// Called when an out of range array index is accessed
-extern(C) void _d_arraybounds_index(string file, uint line, size_t, size_t)
-{
-    // Ignore additional information for now
-    _d_arraybounds(file, line);
-}
 
 extern(C) bool _xopEquals(in void*, in void*) { return false; }
 extern(C) int _xopCmp(in void*, in void*) { return 0; }
+
+template _arrayOp(Args...)
+{
+    import core.internal.array.operations;
+    alias _arrayOp = arrayOp!Args;
+}
+
 
 /// Base Object class. All other classes implicitly inherit this.
 class Object 
