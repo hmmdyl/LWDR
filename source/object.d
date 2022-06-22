@@ -10,6 +10,7 @@ version(LWDR_DynamicArray)
 public import lifetime.array_ : _d_arraysetlengthTImpl, _d_newarrayU;
 
 
+public import lwdr.string_switch : __switch;
 public import core.internal.switch_ : __switch_error; //final switch
 
 
