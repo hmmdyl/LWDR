@@ -9,6 +9,10 @@ import lifetime.throwable;
 version(LWDR_DynamicArray)
 public import lifetime.array_ : _d_arraysetlengthTImpl, _d_newarrayU;
 
+
+public import core.internal.switch_ : __switch_error; //final switch
+
+
 public import rt.arrcast : __ArrayCast;
 
 version (D_LP64)
@@ -86,8 +90,21 @@ extern(C) void _d_assert(string f, uint l) { rtosbackend_assert(f, l); }
 extern(C) void _d_assert_msg(string msg, string f, uint l) { rtosbackend_assertmsg(msg, f, l); }
 /// A D array was incorrectly accessed
 extern(C) void _d_arraybounds(string f, size_t l) {rtosbackend_arrayBoundFailure(f, l);}
-//final switch (available as assert is implemented)
-public import core.internal.switch_ : __switch_error;
+
+/// Called when an out of range slice of an array is created
+extern(C) void _d_arraybounds_slice(string file, uint line, size_t, size_t, size_t)
+{
+    // Ignore additional information for now
+    _d_arraybounds(file, line);
+}
+
+/// Called when an out of range array index is accessed
+extern(C) void _d_arraybounds_index(string file, uint line, size_t, size_t)
+{
+    // Ignore additional information for now
+    _d_arraybounds(file, line);
+}
+
 
 
 extern(C) bool _xopEquals(in void*, in void*) { return false; }
