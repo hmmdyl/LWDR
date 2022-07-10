@@ -290,6 +290,7 @@ class TypeInfo_Function : TypeInfo
 
 class TypeInfo_Delegate : TypeInfo 
 {
+	TypeInfo next;
 	string deco; 
 
     override bool equals(in void* p1, in void* p2) const
