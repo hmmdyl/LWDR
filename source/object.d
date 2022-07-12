@@ -12,6 +12,7 @@ public import lifetime.array_ : _d_arraysetlengthTImpl, _d_newarrayU;
 
 public import lwdr.string_switch : __switch;
 public import core.internal.switch_ : __switch_error; //final switch
+public import lifetime.destruction: __ArrayDtor;
 
 
 public import rt.arrcast : __ArrayCast;
@@ -884,4 +885,67 @@ const:
         auto p = cast(immutable char*) addrOf(MIname);
         return p[0 .. strlen(p)];
     }
+}
+
+/**
+    Copy pasted from druntime destroy functions
+
+
+Destroys the given object and optionally resets to initial state. It's used to
+_destroy an object, calling its destructor or finalizer so it no longer
+references any other objects. It does $(I not) initiate a GC cycle or free
+any GC memory.
+If `initialize` is supplied `false`, the object is considered invalid after
+destruction, and should not be referenced.
+*/
+void destroy(bool initialize = true, T)(ref T obj) if (is(T == struct))
+{
+    import lifetime.destruction : destructRecurse;
+
+    destructRecurse(obj);
+
+    static if (initialize)
+    {
+        import lifetime.common : emplaceInitializer;
+        emplaceInitializer(obj); // emplace T.init
+    }
+}
+
+
+/// ditto
+void destroy(bool initialize = true, T)(T obj) if (is(T == class))
+{
+    static if (__traits(getLinkage, T) == "C++")
+    {
+        static if (__traits(hasMember, T, "__xdtor"))
+            obj.__xdtor();
+
+        static if (initialize)
+        {
+            const initializer = __traits(initSymbol, T);
+            (cast(void*)obj)[0 .. initializer.length] = initializer[];
+        }
+    }
+    else
+    {
+        // Bypass overloaded opCast
+        auto ptr = (() @trusted => *cast(void**) &obj)();
+        rt_finalize2(ptr, true, initialize);
+    }
+}
+
+/// ditto
+void destroy(bool initialize = true, T)(T obj) if (is(T == interface))
+{
+    static assert(__traits(getLinkage, T) == "D", "Invalid call to destroy() on extern(" ~ __traits(getLinkage, T) ~ ") interface");
+
+    destroy!initialize(cast(Object)obj);
+}
+
+/// ditto
+void destroy(bool initialize = true, T)(ref T obj)
+    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !__traits(isStaticArray, T))
+{
+    static if (initialize)
+        obj = T.init;
 }
