@@ -88,3 +88,34 @@ package void zeroMem(void* ptr, const size_t length) pure nothrow @nogc {
         ptru[i] = 0;
 	}
 }
+
+void emplaceInitializer(T)(scope ref T chunk) nothrow pure @trusted
+if (!is(T == const) && !is(T == immutable) && !is(T == inout))
+{
+    import core.internal.traits : hasElaborateAssign;
+
+    static if (__traits(isZeroInit, T))
+    {
+        import core.stdc.string : memset;
+        memset(cast(void*) &chunk, 0, T.sizeof);
+    }
+    else static if (__traits(isScalar, T) ||
+                    T.sizeof <= 16 && !hasElaborateAssign!T && __traits(compiles, (){ T chunk; chunk = T.init; }))
+    {
+        chunk = T.init;
+    }
+    else static if (__traits(isStaticArray, T))
+    {
+        // For static arrays there is no initializer symbol created. Instead, we emplace elements one-by-one.
+        foreach (i; 0 .. T.length)
+        {
+            emplaceInitializer(chunk[i]);
+        }
+    }
+    else
+    {
+        import core.stdc.string : memcpy;
+        const initializer = __traits(initSymbol, T);
+        memcpy(cast(void*)&chunk, initializer.ptr, initializer.length);
+    }
+}
